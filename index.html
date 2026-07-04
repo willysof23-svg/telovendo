@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TELOVENDO</title>
+  <meta name="description" content="Marketplace">
+  <link rel="icon" href="assets/favicon-default.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header class="encabezado">
+    <div class="contenedor encabezado__barra">
+      <div class="encabezado__logo">
+        <img data-marca="logo" src="assets/logo-default.svg" alt="Logo">
+        <span data-marca="nombre_sitio">TELOVENDO</span>
+      </div>
+      <nav class="encabezado__nav">
+        <a href="catalogo.html">Catálogo</a>
+        <a href="#ofertas">Ofertas</a>
+        <a href="#vender">Vender</a>
+        <a href="#ayuda">Ayuda</a>
+      </nav>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <a class="boton boton--fantasma" href="#" style="display:none" data-mostrar-desktop>Ingresar</a>
+        <a class="boton boton--primario" href="catalogo.html">Explorar</a>
+        <button class="encabezado__menu-btn" aria-label="Abrir menú">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="contenedor hero__grid">
+        <div>
+          <span class="hero__eyebrow">● Pagos fiat y cripto verificados</span>
+          <h1>Vende hoy. Cóbralo en pesos o en bitcoin, tú decides.</h1>
+          <p style="max-width:46ch; color:#4b5563; font-size:1.05rem;">
+            Un marketplace donde cada producto elige sus propios métodos de pago,
+            cada venta queda trazada como un recibo, y cada compra llega con garantía.
+          </p>
+          <div class="hero__acciones">
+            <a class="boton boton--primario" href="catalogo.html">Ver catálogo</a>
+            <a class="boton boton--fantasma" href="#vender">Empezar a vender</a>
+          </div>
+        </div>
+        <div>
+          <!-- Boleta destacada como elemento visual del hero -->
+          <div class="boleta" style="max-width:340px; margin-left:auto;">
+            <div class="boleta__imagen">
+              <span class="boleta__insignia">Más vendido</span>
+              <img src="https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=600&q=60" alt="Producto destacado">
+            </div>
+            <div class="boleta__perforacion"></div>
+            <div class="boleta__cuerpo">
+              <p class="boleta__titulo">Cámara instantánea retro</p>
+              <div class="boleta__fila-precio">
+                <span class="precio boleta__precio">$249.000</span>
+                <span class="timbre" title="Vendedor verificado">✓</span>
+              </div>
+              <div class="boleta__metodos">💳 Tarjeta · ₿ BTC · ₮ USDT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="franja-confianza">
+      <div class="contenedor franja-confianza__item" style="justify-content:space-between; width:100%;">
+        <span class="franja-confianza__item">🔒 Pagos seguros</span>
+        <span class="franja-confianza__item">↩️ Devoluciones garantizadas</span>
+        <span class="franja-confianza__item">✓ Vendedores verificados</span>
+        <span class="franja-confianza__item">₿ Cripto sin fricción</span>
+      </div>
+    </div>
+
+    <section class="seccion">
+      <div class="contenedor">
+        <h2>Categorías destacadas</h2>
+        <div class="grilla-productos" id="grilla-categorias" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));">
+          <!-- se llenan dinámicamente vía JS desde Config/Categorías -->
+        </div>
+      </div>
+    </section>
+
+    <section class="seccion" id="destacados">
+      <div class="contenedor">
+        <h2>Lo más vendido esta semana</h2>
+        <div class="grilla-productos" id="grilla-destacados">
+          <p style="color:#6b7280;">Cargando productos…</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor">
+      <p><strong data-marca="nombre_sitio">TELOVENDO</strong> — <span data-marca="eslogan">Compra y vende con confianza</span></p>
+      <p>Quiénes somos · Términos y condiciones · Privacidad · Preguntas frecuentes · Contacto</p>
+    </div>
+  </footer>
+
+  <script src="brand.config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Carga productos destacados desde el backend. Falla de forma silenciosa
+    // y visible: si el backend aún no está desplegado, muestra un aviso claro
+    // en vez de una grilla vacía sin explicación.
+    async function cargarDestacados() {
+      const contenedor = document.getElementById("grilla-destacados");
+      try {
+        const productos = await apiTelovendo.listarProductos({ orden: "precioDesc" });
+        if (!Array.isArray(productos) || productos.length === 0) {
+          contenedor.innerHTML = "<p style='color:#6b7280;'>Aún no hay productos publicados.</p>";
+          return;
+        }
+        contenedor.innerHTML = productos.slice(0, 8).map(tarjetaProducto_).join("");
+      } catch (err) {
+        contenedor.innerHTML = "<p style='color:#6b7280;'>No se pudo conectar con el backend todavía (¿ya publicaste el Web App de Apps Script y actualizaste BASE_URL en app.js?).</p>";
+      }
+    }
+
+    function tarjetaProducto_(p) {
+      return `
+        <a class="boleta" href="producto.html?id=${p.id}" style="text-decoration:none; color:inherit;">
+          <div class="boleta__imagen">
+            <img src="${p.imagenPortada || 'assets/producto-placeholder.svg'}" alt="${p.nombre}">
+          </div>
+          <div class="boleta__perforacion"></div>
+          <div class="boleta__cuerpo">
+            <p class="boleta__titulo">${p.nombre}</p>
+            <div class="boleta__fila-precio">
+              <span class="precio boleta__precio">${formatearPrecio(p.precio)}</span>
+            </div>
+            <div class="boleta__metodos">${(p.metodosPago || '').split(',').join(' · ')}</div>
+          </div>
+        </a>`;
+    }
+
+    cargarDestacados();
+  </script>
+</body>
+</html>

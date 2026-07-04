@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finalizar compra — TELOVENDO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .pasos { display:flex; gap:8px; margin-bottom:28px; flex-wrap:wrap; }
+    .paso { display:flex; align-items:center; gap:6px; font-size:0.82rem; color:#9a9282; }
+    .paso.activo { color: var(--color-primario); font-weight:600; }
+    .paso .num {
+      width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      border:1.5px solid currentColor; font-family:var(--fuente-datos); font-size:0.7rem;
+    }
+    .campo { margin-bottom:14px; }
+    .campo label { display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem; }
+    .campo input, .campo textarea {
+      width:100%; min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid var(--color-linea);
+      font-family:var(--fuente-texto); font-size:0.95rem;
+    }
+    .caja-wallet {
+      background:#F1F8F6; border:1px dashed var(--color-primario); border-radius:10px; padding:16px;
+      margin:16px 0;
+    }
+    .caja-wallet .direccion { font-family:var(--fuente-datos); word-break:break-all; background:#fff; padding:8px 10px; border-radius:6px; margin-top:6px; }
+    .oculto { display:none; }
+    .resumen-boleta {
+      border:1px solid var(--color-linea); border-radius:var(--radio-grande); padding:16px; margin-bottom:24px;
+    }
+  </style>
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor encabezado__barra">
+      <div class="encabezado__logo">
+        <img data-marca="logo" src="assets/logo-default.svg" alt="Logo">
+        <span data-marca="nombre_sitio">TELOVENDO</span>
+      </div>
+      <nav class="encabezado__nav"><a href="catalogo.html">Volver al catálogo</a></nav>
+    </div>
+  </header>
+
+  <main class="seccion">
+    <div class="contenedor" style="max-width:640px;">
+      <div class="pasos">
+        <span class="paso activo" data-paso="1"><span class="num">1</span> Datos de envío</span>
+        <span class="paso" data-paso="2"><span class="num">2</span> Método de pago</span>
+        <span class="paso" data-paso="3"><span class="num">3</span> Confirmación</span>
+      </div>
+
+      <div class="resumen-boleta" id="resumen-producto">Cargando producto…</div>
+
+      <!-- Paso 1: datos de envío (checkout de invitado, sin cuenta) -->
+      <section id="paso-1">
+        <h2 style="font-size:1.2rem;">Tus datos</h2>
+        <div class="campo"><label>Nombre completo</label><input type="text" id="campo-nombre" required></div>
+        <div class="campo"><label>WhatsApp o correo de contacto</label><input type="text" id="campo-contacto" required></div>
+        <div class="campo"><label>Dirección de envío</label><textarea id="campo-direccion" rows="2"></textarea></div>
+        <button class="boton boton--primario" id="btn-ir-pago">Continuar a método de pago</button>
+      </section>
+
+      <!-- Paso 2: método de pago -->
+      <section id="paso-2" class="oculto">
+        <h2 style="font-size:1.2rem;">Método de pago</h2>
+        <div id="lista-metodos-checkout"></div>
+
+        <div class="caja-wallet oculto" id="caja-wallet-manual">
+          <p style="margin:0 0 4px; font-weight:600;">Transfiere el equivalente a esta wallet:</p>
+          <p class="direccion" id="direccion-wallet"></p>
+          <p id="monto-cripto-checkout" class="precio" style="margin-top:10px;"></p>
+          <div class="campo" style="margin-top:12px;">
+            <label>TXID / hash de la transacción</label>
+            <input type="text" id="campo-txhash" placeholder="ej. 0xabc123...">
+          </div>
+          <div class="campo">
+            <label>Sube el comprobante (captura o PDF)</label>
+            <input type="file" id="campo-comprobante" accept=".jpg,.jpeg,.png,.webp,.pdf">
+          </div>
+        </div>
+
+        <button class="boton boton--fantasma" id="btn-volver-datos">Volver</button>
+        <button class="boton boton--primario" id="btn-confirmar-pedido">Confirmar pedido</button>
+      </section>
+
+      <!-- Paso 3: confirmación -->
+      <section id="paso-3" class="oculto">
+        <h2 style="font-size:1.2rem;">¡Pedido recibido!</h2>
+        <p id="mensaje-confirmacion"></p>
+        <a class="boton boton--primario" href="catalogo.html">Seguir explorando</a>
+      </section>
+    </div>
+  </main>
+
+  <script src="brand.config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const idProducto = new URLSearchParams(window.location.search).get("id");
+    let producto = null;
+    let idPedidoCreado = null;
+
+    async function cargarResumen_() {
+      const cont = document.getElementById("resumen-producto");
+      try {
+        producto = await apiTelovendo.obtenerProducto(idProducto);
+        if (producto.error) { cont.innerHTML = `<p>${producto.error}</p>`; return; }
+        cont.innerHTML = `
+          <div style="display:flex; gap:12px; align-items:center;">
+            <img src="${(producto.galeria && producto.galeria[0] && producto.galeria[0].url) || 'assets/producto-placeholder.svg'}"
+                 style="width:64px;height:64px;object-fit:cover;border-radius:8px;">
+            <div>
+              <p style="margin:0; font-weight:600;">${producto.nombre}</p>
+              <p class="precio" style="margin:0;">${formatearPrecio(producto.precio)}</p>
+            </div>
+          </div>`;
+        renderMetodos_();
+      } catch (e) {
+        cont.innerHTML = "<p style='color:#6b7280;'>No se pudo cargar el producto.</p>";
+      }
+    }
+
+    function renderMetodos_() {
+      const metodos = (producto.metodosPago || "").split(",").filter(Boolean);
+      const etiquetas = { tarjeta: "💳 Tarjeta de crédito/débito", transferencia: "🏦 Transferencia bancaria",
+        contraentrega: "📦 Pago contra entrega", btc: "₿ Bitcoin (BTC)", usdt: "₮ USDT", usdc: "Ⓤ USDC", billetera: "📱 Billetera digital" };
+      document.getElementById("lista-metodos-checkout").innerHTML = metodos.map(m => `
+        <label class="metodo-pago" style="display:flex;align-items:center;gap:10px;border:1px solid var(--color-linea);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;">
+          <input type="radio" name="metodo-checkout" value="${m}" style="width:18px;height:18px;">
+          <span>${etiquetas[m] || m}</span>
+        </label>`).join("");
+
+      document.querySelectorAll('input[name="metodo-checkout"]').forEach(radio => {
+        radio.addEventListener("change", () => manejarSeleccionMetodo_(radio.value));
+      });
+    }
+
+    async function manejarSeleccionMetodo_(metodo) {
+      const cajaWallet = document.getElementById("caja-wallet-manual");
+      if (!["btc", "usdt", "usdc"].includes(metodo)) { cajaWallet.classList.add("oculto"); return; }
+      cajaWallet.classList.remove("oculto");
+      const moneda = metodo.toUpperCase();
+      document.getElementById("direccion-wallet").textContent =
+        (window.BRAND_CONFIG.pagos.wallets_manuales[moneda]) || "Configura tu wallet en brand.config.js";
+      const cot = await apiTelovendo.cotizarCripto(producto.precio, moneda);
+      document.getElementById("monto-cripto-checkout").textContent = cot.error
+        ? cot.error
+        : `Monto a transferir: ≈ ${cot.montoCripto} ${moneda} (cotización válida 15 min)`;
+    }
+
+    document.getElementById("btn-ir-pago").addEventListener("click", () => {
+      if (!document.getElementById("campo-nombre").value || !document.getElementById("campo-contacto").value) {
+        alert("Por favor completa tu nombre y un contacto.");
+        return;
+      }
+      irAPaso_(2);
+    });
+    document.getElementById("btn-volver-datos").addEventListener("click", () => irAPaso_(1));
+
+    document.getElementById("btn-confirmar-pedido").addEventListener("click", async () => {
+      const metodoEl = document.querySelector('input[name="metodo-checkout"]:checked');
+      if (!metodoEl) { alert("Elige un método de pago."); return; }
+
+      const res = await apiTelovendo.crearPedido({
+        idProducto, cantidad: 1, metodoPago: metodoEl.value,
+        comprador: {
+          nombre: document.getElementById("campo-nombre").value,
+          contacto: document.getElementById("campo-contacto").value,
+          direccion: document.getElementById("campo-direccion").value
+        }
+      });
+      if (!res.ok) { alert(res.error || "No se pudo crear el pedido."); return; }
+      idPedidoCreado = res.idPedido;
+
+      if (["btc", "usdt", "usdc"].includes(metodoEl.value)) {
+        const archivo = document.getElementById("campo-comprobante").files[0];
+        if (archivo) {
+          const txHash = document.getElementById("campo-txhash").value;
+          await apiTelovendo.subirComprobantePago(idPedidoCreado, txHash, archivo);
+        }
+      }
+
+      document.getElementById("mensaje-confirmacion").textContent =
+        `Tu pedido ${idPedidoCreado} quedó registrado. Te contactaremos por ${document.getElementById("campo-contacto").value} para coordinar la entrega.`;
+      irAPaso_(3);
+    });
+
+    function irAPaso_(n) {
+      [1, 2, 3].forEach(i => document.getElementById(`paso-${i}`).classList.toggle("oculto", i !== n));
+      document.querySelectorAll(".paso").forEach(p => p.classList.toggle("activo", Number(p.dataset.paso) === n));
+    }
+
+    cargarResumen_();
+  </script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Producto — TELOVENDO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .ficha { display:grid; gap:32px; }
+    @media (min-width:900px){ .ficha { grid-template-columns: 1fr 1fr; } }
+    .galeria__principal { aspect-ratio:1/1; background:#F1ECE0; border-radius:var(--radio-grande); overflow:hidden; }
+    .galeria__principal img { width:100%; height:100%; object-fit:cover; }
+    .galeria__miniaturas { display:flex; gap:8px; margin-top:10px; overflow-x:auto; }
+    .galeria__miniaturas img { width:64px; height:64px; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent; }
+    .galeria__miniaturas img.activa { border-color: var(--color-primario); }
+    .metodos-pago { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+    .metodo-pago { display:flex; align-items:center; gap:10px; border:1px solid var(--color-linea); border-radius:8px; padding:12px; cursor:pointer; }
+    .metodo-pago input { width:18px; height:18px; }
+    #resultado-cripto { font-family: var(--fuente-datos); color: var(--color-primario); margin-top:8px; min-height:1.2em; }
+    .sticky-movil { position:sticky; bottom:0; background:#fff; padding:12px 0; border-top:1px solid var(--color-linea); }
+    @media (min-width:900px){ .sticky-movil { position:static; border:none; padding:0; } }
+  </style>
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor encabezado__barra">
+      <div class="encabezado__logo">
+        <img data-marca="logo" src="assets/logo-default.svg" alt="Logo">
+        <span data-marca="nombre_sitio">TELOVENDO</span>
+      </div>
+      <nav class="encabezado__nav"><a href="index.html">Inicio</a><a href="catalogo.html">Catálogo</a></nav>
+      <button class="encabezado__menu-btn" aria-label="Abrir menú">☰</button>
+    </div>
+  </header>
+
+  <main class="seccion">
+    <div class="contenedor ficha" id="ficha-producto">
+      <p style="color:#6b7280;">Cargando producto…</p>
+    </div>
+  </main>
+
+  <footer class="pie"><div class="contenedor"><p><strong data-marca="nombre_sitio">TELOVENDO</strong></p></div></footer>
+
+  <script src="brand.config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const idProducto = new URLSearchParams(window.location.search).get("id");
+
+    async function cargarProducto() {
+      const cont = document.getElementById("ficha-producto");
+      try {
+        const p = await apiTelovendo.obtenerProducto(idProducto);
+        if (p.error) { cont.innerHTML = `<p>${p.error}</p>`; return; }
+
+        const galeria = (p.galeria && p.galeria.length) ? p.galeria : [{ url: "assets/producto-placeholder.svg" }];
+        const metodos = (p.metodosPago || "").split(",").filter(Boolean);
+
+        cont.innerHTML = `
+          <div>
+            <div class="galeria__principal"><img id="img-principal" src="${galeria[0].url}" alt="${p.nombre}"></div>
+            <div class="galeria__miniaturas">
+              ${galeria.map((g, i) => `<img src="${g.url}" class="${i === 0 ? 'activa' : ''}" onclick="cambiarImagen_(this, '${g.url}')">`).join('')}
+            </div>
+          </div>
+          <div>
+            <h1 style="font-size:1.7rem;">${p.nombre}</h1>
+            <p class="precio" style="font-size:1.6rem; font-weight:700;">${formatearPrecio(p.precio)}</p>
+            <p style="color:#4b5563;">${p.descripcion || ''}</p>
+
+            <h3 style="margin-top:20px;">Método de pago</h3>
+            <div class="metodos-pago" id="lista-metodos">
+              ${metodos.map(m => `
+                <label class="metodo-pago">
+                  <input type="radio" name="metodo" value="${m}">
+                  <span>${etiquetaMetodo_(m)}</span>
+                </label>`).join('')}
+            </div>
+            <div id="resultado-cripto"></div>
+
+            <div class="sticky-movil">
+              <button class="boton boton--primario" style="width:100%;" id="btn-comprar">Comprar ahora</button>
+            </div>
+          </div>
+        `;
+
+        document.querySelectorAll('input[name="metodo"]').forEach(radio => {
+          radio.addEventListener("change", () => actualizarCotizacion_(radio.value, p.precio));
+        });
+      } catch (err) {
+        cont.innerHTML = "<p style='color:#6b7280;'>No se pudo cargar el producto (¿backend desplegado?).</p>";
+      }
+    }
+
+    function cambiarImagen_(el, url) {
+      document.getElementById("img-principal").src = url;
+      document.querySelectorAll(".galeria__miniaturas img").forEach(i => i.classList.remove("activa"));
+      el.classList.add("activa");
+    }
+
+    function etiquetaMetodo_(m) {
+      const etiquetas = { tarjeta: "💳 Tarjeta de crédito/débito", transferencia: "🏦 Transferencia bancaria",
+        contraentrega: "📦 Pago contra entrega", btc: "₿ Bitcoin (BTC)", usdt: "₮ USDT", usdc: "Ⓤ USDC", billetera: "📱 Billetera digital" };
+      return etiquetas[m] || m;
+    }
+
+    async function actualizarCotizacion_(metodo, precioBase) {
+      const div = document.getElementById("resultado-cripto");
+      if (!["btc", "usdt", "usdc"].includes(metodo)) { div.textContent = ""; return; }
+      div.textContent = "Calculando cotización…";
+      const res = await apiTelovendo.cotizarCripto(precioBase, metodo.toUpperCase());
+      if (res.error) { div.textContent = res.error; return; }
+      div.textContent = `≈ ${res.montoCripto} ${res.moneda} · cotización válida por 15 minutos`;
+    }
+
+    cargarProducto();
+  </script>
+</body>
+</html>

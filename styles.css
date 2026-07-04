@@ -1,0 +1,235 @@
+/* =========================================================================
+   styles.css — Sistema de diseño TELOVENDO
+   -------------------------------------------------------------------------
+   Concepto: "boleta / ticket de mercado". Las tarjetas de producto se leen
+   como un recibo de compra — borde perforado que separa la imagen del
+   precio, precio tipografiado en monoespaciada (como una etiqueta de
+   góndola), y un timbre circular para insignias de confianza. Esto evita
+   la plantilla genérica de "tarjeta con sombra suave" y conecta la
+   identidad visual directamente con el acto de comprar/vender.
+
+   Todo color/tipografía sale de variables CSS para que brand.config.js
+   pueda sobreescribirlas en tiempo de ejecución (ver app.js:aplicarMarca).
+   ========================================================================= */
+
+:root {
+  --color-primario: #0E6E5D;
+  --color-secundario: #F2A93B;
+  --color-advertencia: #C1442D;
+  --color-texto: #14192B;
+  --color-fondo: #FBF7EF;
+  --color-linea: #D8CFBC;
+  --color-superficie: #FFFFFF;
+
+  --fuente-display: "Fraunces", serif;
+  --fuente-texto: "Public Sans", sans-serif;
+  --fuente-datos: "IBM Plex Mono", monospace;
+
+  --radio-chico: 6px;
+  --radio-grande: 14px;
+  --sombra-boleta: 0 1px 2px rgba(20, 25, 43, 0.06), 0 8px 24px rgba(20, 25, 43, 0.06);
+  --transicion: 220ms ease;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--fuente-texto);
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.4em;
+}
+
+h1 { font-size: clamp(2rem, 4vw + 1rem, 3.4rem); }
+h2 { font-size: clamp(1.5rem, 2vw + 1rem, 2.2rem); }
+
+a { color: var(--color-primario); }
+
+.precio, .monto-cripto, .sku {
+  font-family: var(--fuente-datos);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Layout base -------------------------------------------------------- */
+.contenedor {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* --- Header / nav (hamburguesa en móvil) -------------------------------- */
+.encabezado {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-fondo);
+  border-bottom: 1px solid var(--color-linea);
+}
+.encabezado__barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+}
+.encabezado__logo { display: flex; align-items: center; gap: 10px; }
+.encabezado__logo img { height: 34px; width: auto; }
+.encabezado__logo span { font-family: var(--fuente-display); font-weight: 600; font-size: 1.25rem; }
+
+.encabezado__nav { display: none; gap: 24px; }
+.encabezado__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  background: none; border: none; cursor: pointer;
+}
+@media (min-width: 900px) {
+  .encabezado__nav { display: flex; }
+  .encabezado__menu-btn { display: none; }
+}
+
+/* --- Botones -------------------------------------------------------------*/
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 22px;
+  border-radius: var(--radio-chico);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform var(--transicion), background var(--transicion);
+}
+.boton:active { transform: scale(0.97); }
+.boton--primario { background: var(--color-primario); color: #fff; }
+.boton--primario:hover { background: #0B5A4C; }
+.boton--secundario { background: var(--color-secundario); color: var(--color-texto); }
+.boton--fantasma { background: transparent; border-color: var(--color-linea); color: var(--color-texto); }
+
+/* --- Hero ---------------------------------------------------------------*/
+.hero {
+  padding: 56px 0 40px;
+  background: linear-gradient(180deg, #FDFBF5 0%, var(--color-fondo) 100%);
+}
+.hero__grid {
+  display: grid;
+  gap: 32px;
+}
+@media (min-width: 900px) {
+  .hero__grid { grid-template-columns: 1.1fr 0.9fr; align-items: center; }
+}
+.hero__eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--fuente-datos);
+  font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--color-primario);
+  border: 1px solid var(--color-primario);
+  border-radius: 100px; padding: 4px 12px;
+  margin-bottom: 16px;
+}
+.hero__acciones { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+
+/* --- Tarjeta "boleta" de producto ---------------------------------------*/
+.grilla-productos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+@media (min-width: 640px) { .grilla-productos { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .grilla-productos { grid-template-columns: repeat(4, 1fr); } }
+
+.boleta {
+  background: var(--color-superficie);
+  border-radius: var(--radio-grande);
+  box-shadow: var(--sombra-boleta);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transicion), box-shadow var(--transicion);
+  position: relative;
+}
+.boleta:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(20,25,43,0.08), 0 16px 32px rgba(20,25,43,0.10); }
+
+.boleta__imagen { position: relative; aspect-ratio: 1 / 1; background: #F1ECE0; }
+.boleta__imagen img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.boleta__insignia {
+  position: absolute; top: 10px; left: 10px;
+  font-family: var(--fuente-datos); font-size: 0.68rem; letter-spacing: 0.03em;
+  background: var(--color-texto); color: #fff;
+  padding: 3px 9px; border-radius: 100px;
+}
+.boleta__insignia--oferta { background: var(--color-advertencia); }
+
+/* Línea perforada = la "boleta" que se separa entre foto y datos de venta */
+.boleta__perforacion {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed var(--color-linea);
+}
+.boleta__perforacion::before, .boleta__perforacion::after {
+  content: "";
+  position: absolute; top: -7px;
+  width: 14px; height: 14px;
+  background: var(--color-fondo);
+  border-radius: 50%;
+}
+.boleta__perforacion::before { left: -7px; }
+.boleta__perforacion::after { right: -7px; }
+
+.boleta__cuerpo { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.boleta__titulo { font-size: 0.95rem; font-weight: 600; margin: 0; }
+.boleta__fila-precio { display: flex; align-items: baseline; justify-content: space-between; margin-top: auto; }
+.boleta__precio { font-size: 1.15rem; font-weight: 700; }
+.boleta__metodos { display: flex; gap: 4px; font-size: 0.7rem; color: #6b7280; }
+
+/* --- Timbre de confianza -------------------------------------------------*/
+.timbre {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1.5px dashed var(--color-primario);
+  color: var(--color-primario); font-size: 0.8rem;
+}
+
+/* --- Utilidades -----------------------------------------------------------*/
+.seccion { padding: 48px 0; }
+.franja-confianza {
+  background: var(--color-texto); color: #fff;
+  padding: 20px 0;
+}
+.franja-confianza .contenedor { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
+.franja-confianza__item { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+
+.pie {
+  border-top: 1px solid var(--color-linea);
+  padding: 40px 0 24px;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.sr-solo {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

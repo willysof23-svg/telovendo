@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de administración — TELOVENDO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .tabs { display:flex; gap:8px; margin-bottom:24px; border-bottom:1px solid var(--color-linea); flex-wrap:wrap; }
+    .tab { padding:10px 16px; cursor:pointer; font-weight:600; color:#9a9282; border-bottom:2px solid transparent; }
+    .tab.activa { color: var(--color-primario); border-color: var(--color-primario); }
+    table { width:100%; border-collapse: collapse; font-size:0.88rem; }
+    th, td { text-align:left; padding:10px; border-bottom:1px solid var(--color-linea); }
+    th { font-family: var(--fuente-datos); font-size:0.72rem; text-transform:uppercase; color:#9a9282; }
+    select.estado-select { padding:6px; border-radius:6px; border:1px solid var(--color-linea); }
+    .form-producto .campo { margin-bottom:12px; }
+    .form-producto label { display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem; }
+    .form-producto input, .form-producto textarea {
+      width:100%; min-height:42px; padding:8px 12px; border-radius:8px; border:1px solid var(--color-linea);
+    }
+    .checkboxes { display:flex; flex-wrap:wrap; gap:10px; }
+    .checkboxes label { display:flex; align-items:center; gap:6px; font-weight:400; font-size:0.85rem; }
+    .tabla-scroll { overflow-x:auto; }
+  </style>
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor encabezado__barra">
+      <div class="encabezado__logo">
+        <img data-marca="logo" src="assets/logo-default.svg" alt="Logo">
+        <span data-marca="nombre_sitio">TELOVENDO</span> <span style="color:#9a9282;font-size:0.8rem;">· Admin</span>
+      </div>
+      <nav class="encabezado__nav"><a href="index.html">Ver sitio</a></nav>
+    </div>
+  </header>
+
+  <main class="seccion">
+    <div class="contenedor">
+      <h1 style="font-size:1.6rem;">Panel de administración</h1>
+      <p style="color:#6b7280;">Publica productos, revisa pedidos y confirma pagos manuales. Como es tu marketplace personal, este panel reúne todo en un solo lugar.</p>
+
+      <div class="tabs">
+        <div class="tab activa" data-tab="pedidos">Pedidos</div>
+        <div class="tab" data-tab="productos">Productos</div>
+        <div class="tab" data-tab="nuevo">Publicar producto</div>
+      </div>
+
+      <section id="tab-pedidos">
+        <div class="tabla-scroll">
+          <table>
+            <thead><tr><th>Pedido</th><th>Comprador</th><th>Contacto</th><th>Método</th><th>Estado</th><th>Comprobante</th><th></th></tr></thead>
+            <tbody id="tabla-pedidos"><tr><td colspan="7">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-productos" class="oculto">
+        <div class="tabla-scroll">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Métodos</th><th></th></tr></thead>
+            <tbody id="tabla-productos"><tr><td colspan="6">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-nuevo" class="oculto">
+        <form class="form-producto" id="form-producto" style="max-width:520px;">
+          <input type="hidden" id="prod-id">
+          <div class="campo"><label>Nombre</label><input type="text" id="prod-nombre" required></div>
+          <div class="campo"><label>Descripción</label><textarea id="prod-descripcion" rows="3"></textarea></div>
+          <div class="campo"><label>Precio (COP)</label><input type="number" id="prod-precio" required></div>
+          <div class="campo"><label>Categoría</label><input type="text" id="prod-categoria"></div>
+          <div class="campo"><label>Stock</label><input type="number" id="prod-stock" value="1"></div>
+          <div class="campo">
+            <label>Métodos de pago aceptados</label>
+            <div class="checkboxes">
+              <label><input type="checkbox" value="tarjeta"> Tarjeta</label>
+              <label><input type="checkbox" value="transferencia"> Transferencia</label>
+              <label><input type="checkbox" value="contraentrega"> Contra entrega</label>
+              <label><input type="checkbox" value="btc"> BTC</label>
+              <label><input type="checkbox" value="usdt"> USDT</label>
+              <label><input type="checkbox" value="usdc"> USDC</label>
+            </div>
+          </div>
+          <button type="submit" class="boton boton--primario">Guardar producto</button>
+        </form>
+        <p id="mensaje-guardado" style="color:var(--color-primario); font-weight:600;"></p>
+        <p style="margin-top:20px;">
+          Una vez guardado, ve a <a href="admin-archivos.html">Mantenimiento de archivos</a> y pega el ID
+          del producto para subir sus imágenes, video o PDF.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <script src="brand.config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
+        tab.classList.add("activa");
+        ["pedidos", "productos", "nuevo"].forEach(id =>
+          document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== tab.dataset.tab));
+        if (tab.dataset.tab === "pedidos") cargarPedidos_();
+        if (tab.dataset.tab === "productos") cargarProductos_();
+      });
+    });
+
+    async function cargarPedidos_() {
+      const tbody = document.getElementById("tabla-pedidos");
+      try {
+        const pedidos = await apiTelovendo.listarPedidos();
+        if (!pedidos.length) { tbody.innerHTML = "<tr><td colspan='7'>Aún no hay pedidos.</td></tr>"; return; }
+        const estados = ["Pendiente de pago", "Pago recibido / en verificación", "Confirmado", "En preparación", "Enviado", "Entregado"];
+        tbody.innerHTML = pedidos.map(p => `
+          <tr>
+            <td class="sku">${p.idPedido}</td>
+            <td>${p.idComprador}</td>
+            <td>${p.contactoComprador || ''}</td>
+            <td>${p.metodoPago}</td>
+            <td>
+              <select class="estado-select" onchange="cambiarEstado_('${p.idPedido}', this.value)">
+                ${estados.map(e => `<option ${e === p.estado ? 'selected' : ''}>${e}</option>`).join('')}
+              </select>
+            </td>
+            <td>${p.comprobanteUrl ? `<a href="${p.comprobanteUrl}" target="_blank">Ver</a>` : '—'}</td>
+            <td></td>
+          </tr>`).join("");
+      } catch (e) {
+        tbody.innerHTML = "<tr><td colspan='7'>No se pudo conectar con el backend.</td></tr>";
+      }
+    }
+
+    async function cambiarEstado_(idPedido, nuevoEstado) {
+      const res = await apiTelovendo.actualizarEstadoPedido(idPedido, nuevoEstado);
+      if (!res.ok) alert(res.error || "No se pudo actualizar el pedido.");
+    }
+
+    async function cargarProductos_() {
+      const tbody = document.getElementById("tabla-productos");
+      try {
+        const productos = await apiTelovendo.listarProductos({});
+        if (!productos.length) { tbody.innerHTML = "<tr><td colspan='6'>Aún no hay productos.</td></tr>"; return; }
+        tbody.innerHTML = productos.map(p => `
+          <tr>
+            <td class="sku">${p.id}</td>
+            <td>${p.nombre}</td>
+            <td class="precio">${formatearPrecio(p.precio)}</td>
+            <td>${p.stock}</td>
+            <td>${p.metodosPago}</td>
+            <td><a href="admin-archivos.html">Archivos</a></td>
+          </tr>`).join("");
+      } catch (e) {
+        tbody.innerHTML = "<tr><td colspan='6'>No se pudo conectar con el backend.</td></tr>";
+      }
+    }
+
+    document.getElementById("form-producto").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const metodos = [...document.querySelectorAll('.checkboxes input:checked')].map(c => c.value).join(",");
+      const producto = {
+        id: document.getElementById("prod-id").value || undefined,
+        nombre: document.getElementById("prod-nombre").value,
+        descripcion: document.getElementById("prod-descripcion").value,
+        precio: Number(document.getElementById("prod-precio").value),
+        categoria: document.getElementById("prod-categoria").value,
+        stock: Number(document.getElementById("prod-stock").value),
+        metodosPago: metodos
+      };
+      const res = await apiTelovendo.guardarProducto(producto);
+      const msg = document.getElementById("mensaje-guardado");
+      if (res.ok) {
+        msg.textContent = `Producto guardado con ID: ${res.id}. Cópialo para subir sus archivos.`;
+        document.getElementById("form-producto").reset();
+      } else {
+        msg.style.color = "var(--color-advertencia)";
+        msg.textContent = res.error || "No se pudo guardar el producto.";
+      }
+    });
+
+    cargarPedidos_();
+  </script>
+</body>
+</html>

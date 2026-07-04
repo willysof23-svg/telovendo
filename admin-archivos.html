@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mantenimiento de Archivos — TELOVENDO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .panel { max-width: 760px; }
+    .zona-carga {
+      border: 2px dashed var(--color-linea); border-radius: var(--radio-grande);
+      padding: 32px; text-align:center; cursor:pointer; margin-bottom:24px;
+      transition: border-color var(--transicion), background var(--transicion);
+    }
+    .zona-carga.arrastrando { border-color: var(--color-primario); background:#F1F8F6; }
+    .galeria-admin { display:flex; flex-wrap:wrap; gap:12px; }
+    .archivo-item {
+      width:120px; border:1px solid var(--color-linea); border-radius:10px; overflow:hidden;
+      background:#fff; position:relative; cursor:grab;
+    }
+    .archivo-item.arrastrado { opacity:0.4; }
+    .archivo-item img, .archivo-item .miniatura-pdf { width:100%; height:90px; object-fit:cover; display:block; background:#F1ECE0; }
+    .archivo-item .portada-tag {
+      position:absolute; top:4px; left:4px; background:var(--color-texto); color:#fff;
+      font-size:0.65rem; padding:2px 6px; border-radius:100px;
+    }
+    .archivo-item__meta { padding:6px 8px; font-size:0.72rem; color:#6b7280; }
+    .archivo-item__acciones { display:flex; justify-content:space-between; padding:0 8px 8px; }
+    .archivo-item__acciones button {
+      border:none; background:none; cursor:pointer; font-size:0.85rem; color:var(--color-advertencia);
+    }
+    .barra-progreso { height:6px; background:#eee; border-radius:100px; overflow:hidden; margin:8px 0; display:none; }
+    .barra-progreso__fill { height:100%; width:0%; background:var(--color-primario); transition: width 200ms; }
+    .mensaje-error { background:#FDECEA; color:var(--color-advertencia); border:1px solid #f3c1b7; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:none; }
+    .mensaje-ok { background:#EAF6F1; color:var(--color-primario); border:1px solid #b9e0d1; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:none; }
+  </style>
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor encabezado__barra">
+      <div class="encabezado__logo">
+        <img data-marca="logo" src="assets/logo-default.svg" alt="Logo">
+        <span data-marca="nombre_sitio">TELOVENDO</span>
+      </div>
+      <nav class="encabezado__nav"><a href="index.html">Inicio</a></nav>
+    </div>
+  </header>
+
+  <main class="seccion">
+    <div class="contenedor panel">
+      <h1 style="font-size:1.5rem;">Mantenimiento de archivos</h1>
+      <p style="color:#6b7280;">
+        Sube, reordena, reemplaza o elimina las imágenes, video y PDF de este producto.
+        No necesitas tocar código — todo se maneja desde aquí. La primera imagen de la galería
+        es la portada que se ve en el catálogo.
+      </p>
+
+      <label style="display:block; margin:16px 0 6px; font-weight:600;">ID del producto</label>
+      <input type="text" id="input-id-producto" placeholder="ej. PROD-0001" style="min-height:44px; padding:0 12px; border-radius:6px; border:1px solid var(--color-linea); width:260px;">
+      <button class="boton boton--fantasma" id="btn-cargar-producto" style="margin-left:8px;">Cargar galería</button>
+
+      <div id="mensaje-error" class="mensaje-error"></div>
+      <div id="mensaje-ok" class="mensaje-ok"></div>
+
+      <div class="zona-carga" id="zona-carga">
+        <p style="margin:0 0 8px;">Arrastra archivos aquí o haz clic para elegir</p>
+        <p style="margin:0; font-size:0.8rem; color:#6b7280;">
+          Imágenes JPG/PNG/WEBP hasta 2 MB · Video MP4/WEBM hasta 20 MB · PDF hasta 5 MB
+        </p>
+        <input type="file" id="input-archivo" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm,.pdf" multiple hidden>
+      </div>
+      <div class="barra-progreso" id="barra-progreso"><div class="barra-progreso__fill" id="barra-progreso-fill"></div></div>
+
+      <h3>Galería actual</h3>
+      <div class="galeria-admin" id="galeria-admin">
+        <p style="color:#6b7280;">Carga un ID de producto para ver su galería.</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="brand.config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    /**
+     * admin-archivos.html — panel de Mantenimiento de Archivos (sección 5)
+     * -----------------------------------------------------------------
+     * Validación en dos capas:
+     *  1) Aquí en el cliente (validarArchivo_): feedback inmediato, evita
+     *     subir un archivo que de todas formas será rechazado.
+     *  2) En Code.gs (subirArchivo_): la validación real, porque nunca hay
+     *     que confiar solo en el cliente.
+     * -----------------------------------------------------------------
+     */
+    let idProductoActual = null;
+    const LIMITES = window.BRAND_CONFIG.archivos;
+
+    document.getElementById("btn-cargar-producto").addEventListener("click", () => {
+      idProductoActual = document.getElementById("input-id-producto").value.trim();
+      if (idProductoActual) cargarGaleria_();
+    });
+
+    const zona = document.getElementById("zona-carga");
+    const inputArchivo = document.getElementById("input-archivo");
+    zona.addEventListener("click", () => inputArchivo.click());
+    zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("arrastrando"); });
+    zona.addEventListener("dragleave", () => zona.classList.remove("arrastrando"));
+    zona.addEventListener("drop", e => {
+      e.preventDefault();
+      zona.classList.remove("arrastrando");
+      manejarArchivos_(e.dataTransfer.files);
+    });
+    inputArchivo.addEventListener("change", () => manejarArchivos_(inputArchivo.files));
+
+    async function manejarArchivos_(listaArchivos) {
+      if (!idProductoActual) { mostrarError_("Primero carga o escribe un ID de producto."); return; }
+      for (const archivo of listaArchivos) {
+        const error = validarArchivo_(archivo);
+        if (error) { mostrarError_(error); continue; }
+        await subirConProgreso_(archivo);
+      }
+      cargarGaleria_();
+    }
+
+    /**
+     * Valida formato y peso en el cliente ANTES de subir, para feedback
+     * inmediato. La misma regla se repite en el servidor (Code.gs).
+     * @param {File} archivo
+     * @returns {string|null} mensaje de error, o null si es válido
+     */
+    function validarArchivo_(archivo) {
+      const ext = archivo.name.split(".").pop().toLowerCase();
+      const pesoMb = archivo.size / (1024 * 1024);
+
+      if (LIMITES.formatos_imagen.includes(ext)) {
+        if (pesoMb > LIMITES.peso_max_imagen_mb) {
+          return `La imagen "${archivo.name}" pesa ${pesoMb.toFixed(1)} MB y el máximo permitido es ${LIMITES.peso_max_imagen_mb} MB. Comprime la imagen o cámbiala a formato WEBP/JPG y vuelve a intentarlo.`;
+        }
+        return null;
+      }
+      if (LIMITES.formatos_video.includes(ext)) {
+        if (pesoMb > LIMITES.peso_max_video_mb) {
+          return `El video "${archivo.name}" pesa ${pesoMb.toFixed(1)} MB y el máximo permitido es ${LIMITES.peso_max_video_mb} MB.`;
+        }
+        return null;
+      }
+      if (ext === "pdf") {
+        if (pesoMb > LIMITES.peso_max_pdf_mb) {
+          return `El PDF "${archivo.name}" pesa ${pesoMb.toFixed(1)} MB y el máximo permitido es ${LIMITES.peso_max_pdf_mb} MB.`;
+        }
+        return null;
+      }
+      return `Formato ".${ext}" no permitido. Usa JPG, PNG, WEBP, MP4, WEBM o PDF.`;
+    }
+
+    async function subirConProgreso_(archivo) {
+      const barra = document.getElementById("barra-progreso");
+      const fill = document.getElementById("barra-progreso-fill");
+      barra.style.display = "block"; fill.style.width = "30%";
+      try {
+        const posicionActual = document.querySelectorAll(".archivo-item").length;
+        const res = await apiTelovendo.subirArchivo(idProductoActual, archivo, posicionActual);
+        fill.style.width = "100%";
+        if (!res.ok) { mostrarError_(res.error); } else { mostrarOk_(`"${archivo.name}" subido correctamente.`); }
+      } catch (e) {
+        mostrarError_("No se pudo subir el archivo. Revisa tu conexión e intenta de nuevo.");
+      } finally {
+        setTimeout(() => { barra.style.display = "none"; fill.style.width = "0%"; }, 500);
+      }
+    }
+
+    async function cargarGaleria_() {
+      const cont = document.getElementById("galeria-admin");
+      try {
+        const producto = await apiTelovendo.obtenerProducto(idProductoActual);
+        const galeria = producto.galeria || [];
+        if (galeria.length === 0) {
+          cont.innerHTML = "<p style='color:#6b7280;'>Este producto aún no tiene archivos.</p>";
+          return;
+        }
+        cont.innerHTML = galeria.map((g, i) => `
+          <div class="archivo-item" draggable="true" data-id="${g.idArchivo}">
+            ${g.tipo === 'pdf'
+              ? `<div class="miniatura-pdf" style="display:flex;align-items:center;justify-content:center;">📄 PDF</div>`
+              : `<img src="${g.url}" alt="archivo">`}
+            ${i === 0 ? '<span class="portada-tag">Portada</span>' : ''}
+            <div class="archivo-item__meta">${g.tipo}</div>
+            <div class="archivo-item__acciones">
+              <button onclick="eliminarArchivo_('${g.idArchivo}')">Eliminar</button>
+            </div>
+          </div>`).join("");
+        habilitarDragDrop_();
+      } catch (e) {
+        cont.innerHTML = "<p style='color:#6b7280;'>No se pudo cargar la galería (¿backend desplegado?).</p>";
+      }
+    }
+
+    async function eliminarArchivo_(idArchivo) {
+      if (!confirm("¿Eliminar este archivo? Esta acción no afecta a los demás archivos del producto.")) return;
+      const res = await apiTelovendo.eliminarArchivo(idProductoActual, idArchivo);
+      if (res.ok) { mostrarOk_("Archivo eliminado."); cargarGaleria_(); } else { mostrarError_(res.error); }
+    }
+
+    // Reordenar por drag & drop dentro de la galería (la primera posición = portada)
+    function habilitarDragDrop_() {
+      const items = document.querySelectorAll(".archivo-item");
+      let arrastrado = null;
+      items.forEach(item => {
+        item.addEventListener("dragstart", () => { arrastrado = item; item.classList.add("arrastrado"); });
+        item.addEventListener("dragend", () => item.classList.remove("arrastrado"));
+        item.addEventListener("dragover", e => e.preventDefault());
+        item.addEventListener("drop", async () => {
+          if (arrastrado && arrastrado !== item) {
+            item.parentNode.insertBefore(arrastrado, item);
+            const nuevoOrden = [...document.querySelectorAll(".archivo-item")].map(i => i.dataset.id);
+            await apiTelovendo.reordenarGaleria(idProductoActual, nuevoOrden);
+            cargarGaleria_();
+          }
+        });
+      });
+    }
+
+    function mostrarError_(msg) {
+      const el = document.getElementById("mensaje-error");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-ok").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+    function mostrarOk_(msg) {
+      const el = document.getElementById("mensaje-ok");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-error").style.display = "none";
+      setTimeout(() => el.style.display = "none", 4000);
+    }
+  </script>
+</body>
+</html>
