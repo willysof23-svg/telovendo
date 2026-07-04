@@ -90,5 +90,8 @@ const BRAND_CONFIG = {
   }
 };
 
-// No modificar debajo de esta línea: solo exporta la config para su uso.
-if (typeof module !== "undefined") module.exports = BRAND_CONFIG;
+// No modificar debajo de esta línea: conecta la configuración con el navegador
+   // y con Node (por si se usa en pruebas). Sin esta línea, "window.BRAND_CONFIG"
+   // queda vacío y cualquier página que lo use se detiene con un error silencioso.
+   if (typeof window !== "undefined") window.BRAND_CONFIG = BRAND_CONFIG;
+   if (typeof module !== "undefined") module.exports = BRAND_CONFIG;
