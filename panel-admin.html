@@ -7,13 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
+    /* CORREGIDO (v4): esta regla faltaba por completo — por eso "Productos" y
+       "Publicar producto" quedaban visibles debajo de "Pedidos" siempre. */
+    .oculto { display: none !important; }
+
     .tabs { display:flex; gap:8px; margin-bottom:24px; border-bottom:1px solid var(--color-linea); flex-wrap:wrap; }
-    .tab { padding:10px 16px; cursor:pointer; font-weight:600; color:#9a9282; border-bottom:2px solid transparent; }
+    .tab { padding:10px 16px; cursor:pointer; font-weight:600; color:#9a9282; border-bottom:2px solid transparent; min-height:44px; display:flex; align-items:center; }
     .tab.activa { color: var(--color-primario); border-color: var(--color-primario); }
     table { width:100%; border-collapse: collapse; font-size:0.88rem; }
     th, td { text-align:left; padding:10px; border-bottom:1px solid var(--color-linea); }
     th { font-family: var(--fuente-datos); font-size:0.72rem; text-transform:uppercase; color:#9a9282; }
-    select.estado-select { padding:6px; border-radius:6px; border:1px solid var(--color-linea); }
+    select.estado-select { padding:6px; border-radius:6px; border:1px solid var(--color-linea); min-height:38px; }
     .form-producto .campo { margin-bottom:12px; }
     .form-producto label { display:block; font-weight:600; margin-bottom:4px; font-size:0.9rem; }
     .form-producto input, .form-producto textarea {
@@ -22,6 +26,49 @@
     .checkboxes { display:flex; flex-wrap:wrap; gap:10px; }
     .checkboxes label { display:flex; align-items:center; gap:6px; font-weight:400; font-size:0.85rem; }
     .tabla-scroll { overflow-x:auto; }
+
+    /* --- Filtros de barra (Pedidos/Productos) --- */
+    .barra-filtros { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; align-items:center; }
+    .barra-filtros select, .barra-filtros input {
+      min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea);
+      font-family: var(--fuente-texto); background:#fff;
+    }
+
+    /* --- Banner de alerta de stock --- */
+    .banner-alerta {
+      background:#FDF3E7; border:1px solid var(--color-secundario); border-radius:10px;
+      padding:14px 18px; margin-bottom:20px; display:flex; align-items:flex-start; gap:10px; font-size:0.9rem;
+    }
+    .banner-alerta strong { color:var(--color-advertencia); }
+
+    /* --- Fila de pedido clicable + modal de detalle --- */
+    .fila-pedido-clicable { cursor:pointer; color:var(--color-primario); font-weight:600; text-decoration:underline; background:none; border:none; padding:0; font-family:var(--fuente-datos); font-size:0.88rem; }
+    .modal-fondo {
+      position:fixed; inset:0; background:rgba(20,25,43,0.45); z-index:100;
+      display:flex; align-items:center; justify-content:center; padding:16px;
+    }
+    .modal-caja {
+      background:#fff; border-radius:var(--radio-grande); max-width:520px; width:100%;
+      max-height:88vh; overflow-y:auto; padding:24px;
+    }
+    .modal-caja h3 { margin-top:0; }
+    .modal-cerrar { float:right; background:none; border:none; font-size:1.4rem; cursor:pointer; min-width:44px; min-height:44px; }
+    .detalle-fila { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--color-linea); font-size:0.9rem; }
+    .detalle-fila span:first-child { color:#6b7280; }
+
+    /* --- Reportes --- */
+    .tarjetas-reporte { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px; }
+    .tarjeta-reporte { background:#fff; border:1px solid var(--color-linea); border-radius:var(--radio-grande); padding:16px; }
+    .tarjeta-reporte .valor { font-family:var(--fuente-datos); font-size:1.5rem; font-weight:700; color:var(--color-primario); }
+    .tarjeta-reporte .etiqueta { font-size:0.78rem; color:#6b7280; margin-top:4px; }
+    .bloque-reporte { margin-bottom:28px; }
+    .bloque-reporte h3 { font-size:1.05rem; margin-bottom:10px; }
+
+    @media (max-width: 640px) {
+      .tabs { overflow-x:auto; flex-wrap:nowrap; }
+      table { font-size:0.8rem; }
+      th, td { padding:8px 6px; }
+    }
   </style>
 </head>
 <body>
@@ -40,13 +87,28 @@
       <h1 style="font-size:1.6rem;">Panel de administración</h1>
       <p style="color:#6b7280;">Publica productos, revisa pedidos y confirma pagos manuales. Como es tu marketplace personal, este panel reúne todo en un solo lugar.</p>
 
+      <div id="banner-alerta-stock"></div>
+
       <div class="tabs">
         <div class="tab activa" data-tab="pedidos">Pedidos</div>
         <div class="tab" data-tab="productos">Productos</div>
         <div class="tab" data-tab="nuevo">Publicar producto</div>
+        <div class="tab" data-tab="reportes">Reportes</div>
       </div>
 
       <section id="tab-pedidos">
+        <div class="barra-filtros">
+          <label style="font-weight:600; font-size:0.9rem;">Filtrar por estado:</label>
+          <select id="filtro-estado-pedidos">
+            <option value="">Todos</option>
+            <option>Pendiente de pago</option>
+            <option>Pago recibido / en verificación</option>
+            <option>Confirmado</option>
+            <option>En preparación</option>
+            <option>Enviado</option>
+            <option>Entregado</option>
+          </select>
+        </div>
         <div class="tabla-scroll">
           <table>
             <thead><tr><th>Pedido</th><th>Comprador</th><th>Contacto</th><th>Método</th><th>Estado</th><th>Comprobante</th><th></th></tr></thead>
@@ -56,12 +118,51 @@
       </section>
 
       <section id="tab-productos" class="oculto">
+        <div class="barra-filtros">
+          <select id="filtro-categoria-productos"><option value="">Todas las categorías</option></select>
+          <input type="number" id="filtro-precio-min-productos" placeholder="Precio mín.">
+          <input type="number" id="filtro-precio-max-productos" placeholder="Precio máx.">
+          <button class="boton boton--fantasma" id="btn-filtrar-productos">Filtrar</button>
+        </div>
         <div class="tabla-scroll">
           <table>
             <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Métodos</th><th></th></tr></thead>
             <tbody id="tabla-productos"><tr><td colspan="6">Cargando…</td></tr></tbody>
           </table>
         </div>
+      </section>
+
+      <section id="tab-reportes" class="oculto">
+        <div class="barra-filtros">
+          <label style="font-weight:600; font-size:0.9rem;">Periodo:</label>
+          <input type="date" id="reporte-fecha-inicio">
+          <span>a</span>
+          <input type="date" id="reporte-fecha-fin">
+          <button class="boton boton--primario" id="btn-generar-reporte">Generar</button>
+          <button class="boton boton--fantasma" id="btn-exportar-excel">Exportar a Excel</button>
+        </div>
+        <div class="barra-filtros" style="margin-bottom:10px;">
+          <button type="button" class="boton boton--fantasma" id="btn-toggle-filtro-reportes">Filtrar por producto o categoría ▾</button>
+        </div>
+        <div id="panel-filtro-reportes" class="oculto" style="background:#fff; border:1px solid var(--color-linea); border-radius:10px; padding:16px 18px; margin-bottom:18px; display:flex; flex-wrap:wrap; gap:28px;">
+          <div>
+            <p style="font-weight:600; margin:0 0 8px; font-size:0.85rem;">Categorías</p>
+            <div id="chk-categorias-reporte" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
+          <div>
+            <p style="font-weight:600; margin:0 0 8px; font-size:0.85rem;">Productos</p>
+            <div id="chk-productos-reporte" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:8px;"></div>
+          </div>
+        </div>
+        <div class="checkboxes" style="margin-bottom:18px;">
+          <label><input type="checkbox" class="chk-reporte" value="ventas" checked> Ventas y # pedidos</label>
+          <label><input type="checkbox" class="chk-reporte" value="masVendidos" checked> Productos más vendidos</label>
+          <label><input type="checkbox" class="chk-reporte" value="inventario" checked> Inventario valorizado</label>
+          <label><input type="checkbox" class="chk-reporte" value="stockBajo" checked> Stock bajo / agotado</label>
+          <label><input type="checkbox" class="chk-reporte" value="porEstado" checked> Pedidos por estado (valorizado)</label>
+          <label><input type="checkbox" class="chk-reporte" value="ingresos" checked> Ingresos por método de pago</label>
+        </div>
+        <div id="contenido-reportes"><p style="color:#6b7280;">Elige qué reportes quieres ver, un periodo (o deja vacío para ver todo) y haz clic en "Generar".</p></div>
       </section>
 
       <section id="tab-nuevo" class="oculto">
@@ -94,35 +195,86 @@
     </div>
   </main>
 
+  <div id="modal-detalle-pedido"></div>
+
   <script src="brand.config.js"></script>
   <script src="app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
+    /**
+     * panel-admin.html — lógica del panel (v4)
+     * -----------------------------------------------------------------
+     * Cambios de esta versión respecto a la anterior:
+     *  1) Bug corregido vía CSS (.oculto ya existía en JS pero no en estilos).
+     *  2) Cada pestaña ahora carga SOLO su propia información (Regla del
+     *     usuario: "si es PEDIDOS, solo pedidos; si es PRODUCTOS, solo
+     *     productos"), con filtros propios que reutilizan filtros que el
+     *     backend ya soportaba (listarPedidos_(estado), listarProductos_(filtros)).
+     *  3) Detalle de pedido en modal al hacer clic en el ID del pedido —
+     *     combina los datos ya cargados del pedido con el producto asociado
+     *     (una sola llamada extra a obtenerProducto_, solo al abrir el modal).
+     *  4) Banner de alerta de stock bajo/agotado, calculado del propio
+     *     listado de productos (sin llamada extra al backend).
+     *  5) Pestaña nueva "Reportes": trae los 5 reportes en una sola llamada
+     *     (generarReportes_) y permite exportar a Excel en el navegador
+     *     (SheetJS, ya disponible como CDN — cero costo de servidor).
+     * -----------------------------------------------------------------
+     */
+
+    let cachePedidos_ = [];   // último listado de pedidos cargado (para abrir el modal sin recargar)
+    let cacheProductos_ = []; // último listado de productos (para el banner de alerta)
+    let cacheReportes_ = null; // último reporte generado (para exportar a Excel)
+
+    const ESTADOS_PEDIDO = ["Pendiente de pago", "Pago recibido / en verificación", "Confirmado", "En preparación", "Enviado", "Entregado"];
+
     document.querySelectorAll(".tab").forEach(tab => {
       tab.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
         tab.classList.add("activa");
-        ["pedidos", "productos", "nuevo"].forEach(id =>
+        ["pedidos", "productos", "nuevo", "reportes"].forEach(id =>
           document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== tab.dataset.tab));
         if (tab.dataset.tab === "pedidos") cargarPedidos_();
         if (tab.dataset.tab === "productos") cargarProductos_();
       });
     });
 
+    /** Carga el banner de alerta de stock bajo/agotado desde el listado de productos ya en caché. */
+    function actualizarBannerAlerta_() {
+      const cont = document.getElementById("banner-alerta-stock");
+      const agotados = cacheProductos_.filter(p => Number(p.stock) <= 0);
+      const stockBajo = cacheProductos_.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 3);
+      if (!agotados.length && !stockBajo.length) { cont.innerHTML = ""; return; }
+      cont.innerHTML = `
+        <div class="banner-alerta">
+          <span>⚠️</span>
+          <span>
+            ${agotados.length ? `<strong>${agotados.length} producto(s) agotado(s):</strong> ${agotados.map(p => p.nombre).join(", ")}. ` : ''}
+            ${stockBajo.length ? `<strong>${stockBajo.length} con stock bajo (≤3):</strong> ${stockBajo.map(p => `${p.nombre} (${p.stock})`).join(", ")}.` : ''}
+          </span>
+        </div>`;
+    }
+
+    /**
+     * Carga los pedidos aplicando el filtro de estado seleccionado.
+     * Invocada por: cambio de pestaña, cambio del filtro de estado.
+     */
     async function cargarPedidos_() {
       const tbody = document.getElementById("tabla-pedidos");
+      const estadoFiltro = document.getElementById("filtro-estado-pedidos").value;
+      tbody.innerHTML = "<tr><td colspan='7'>Cargando…</td></tr>";
       try {
-        const pedidos = await apiTelovendo.listarPedidos();
-        if (!pedidos.length) { tbody.innerHTML = "<tr><td colspan='7'>Aún no hay pedidos.</td></tr>"; return; }
-        const estados = ["Pendiente de pago", "Pago recibido / en verificación", "Confirmado", "En preparación", "Enviado", "Entregado"];
+        const pedidos = await apiTelovendo.listarPedidos(estadoFiltro);
+        cachePedidos_ = pedidos;
+        if (!pedidos.length) { tbody.innerHTML = "<tr><td colspan='7'>No hay pedidos con ese filtro.</td></tr>"; return; }
         tbody.innerHTML = pedidos.map(p => `
           <tr>
-            <td class="sku">${p.idPedido}</td>
+            <td><button class="fila-pedido-clicable" onclick="abrirDetallePedido_('${p.idPedido}')">${p.idPedido}</button></td>
             <td>${p.idComprador}</td>
             <td>${p.contactoComprador || ''}</td>
             <td>${p.metodoPago}</td>
             <td>
               <select class="estado-select" onchange="cambiarEstado_('${p.idPedido}', this.value)">
-                ${estados.map(e => `<option ${e === p.estado ? 'selected' : ''}>${e}</option>`).join('')}
+                ${ESTADOS_PEDIDO.map(e => `<option ${e === p.estado ? 'selected' : ''}>${e}</option>`).join('')}
               </select>
             </td>
             <td>${p.comprobanteUrl ? `<a href="${p.comprobanteUrl}" target="_blank">Ver</a>` : '—'}</td>
@@ -132,21 +284,89 @@
         tbody.innerHTML = "<tr><td colspan='7'>No se pudo conectar con el backend.</td></tr>";
       }
     }
+    document.getElementById("filtro-estado-pedidos").addEventListener("change", cargarPedidos_);
 
+    /**
+     * Cambia el estado de un pedido. Si el backend descontó stock (al llegar
+     * a "Entregado"), se refresca también la pestaña de Productos en caché
+     * para que el banner de alerta quede al día sin que el admin recargue.
+     */
     async function cambiarEstado_(idPedido, nuevoEstado) {
       const res = await apiTelovendo.actualizarEstadoPedido(idPedido, nuevoEstado);
-      if (!res.ok) alert(res.error || "No se pudo actualizar el pedido.");
+      if (!res.ok) { alert(res.error || "No se pudo actualizar el pedido."); return; }
+      if (res.stockDescontado) {
+        await cargarProductos_(true); // refresca en silencio para actualizar el banner
+      }
     }
 
-    async function cargarProductos_() {
-      const tbody = document.getElementById("tabla-productos");
+    /**
+     * Abre un modal con el detalle completo del pedido: datos del comprador
+     * (ya disponibles en caché) + datos del producto (se piden en este
+     * momento con obtenerProducto_, para no cargar esa info en el listado
+     * general y mantenerlo liviano).
+     * @param {string} idPedido
+     */
+    async function abrirDetallePedido_(idPedido) {
+      const pedido = cachePedidos_.find(p => p.idPedido === idPedido);
+      if (!pedido) return;
+      const modal = document.getElementById("modal-detalle-pedido");
+      modal.innerHTML = `
+        <div class="modal-fondo" onclick="if(event.target===this) cerrarDetallePedido_()">
+          <div class="modal-caja">
+            <button class="modal-cerrar" onclick="cerrarDetallePedido_()" aria-label="Cerrar">×</button>
+            <h3>Pedido ${pedido.idPedido}</h3>
+            <div id="detalle-producto-cargando" style="color:#6b7280;">Cargando producto…</div>
+            <div class="detalle-fila"><span>Comprador</span><span>${pedido.idComprador}</span></div>
+            <div class="detalle-fila"><span>Contacto</span><span>${pedido.contactoComprador || '—'}</span></div>
+            <div class="detalle-fila"><span>Dirección</span><span>${pedido.direccionComprador || '—'}</span></div>
+            <div class="detalle-fila"><span>Método de pago</span><span>${pedido.metodoPago}</span></div>
+            <div class="detalle-fila"><span>Cantidad</span><span>${pedido.cantidad}</span></div>
+            <div class="detalle-fila"><span>Estado</span><span>${pedido.estado}</span></div>
+            <div class="detalle-fila"><span>Fecha</span><span>${new Date(pedido.fecha).toLocaleString('es-CO')}</span></div>
+            <div class="detalle-fila"><span>Comprobante</span><span>${pedido.comprobanteUrl ? `<a href="${pedido.comprobanteUrl}" target="_blank">Ver comprobante</a>` : '—'}</span></div>
+          </div>
+        </div>`;
       try {
-        const productos = await apiTelovendo.listarProductos({});
-        if (!productos.length) { tbody.innerHTML = "<tr><td colspan='6'>Aún no hay productos.</td></tr>"; return; }
+        const producto = await apiTelovendo.obtenerProducto(pedido.idProducto);
+        document.getElementById("detalle-producto-cargando").outerHTML = `
+          <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--color-linea);">
+            <img src="${(producto.galeria && producto.galeria[0] && producto.galeria[0].url) || 'assets/producto-placeholder.svg'}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;">
+            <div>
+              <p style="margin:0; font-weight:600;">${producto.nombre || '(producto eliminado)'}</p>
+              <p class="precio" style="margin:0;">${producto.precio ? formatearPrecio(producto.precio) : ''}</p>
+            </div>
+          </div>`;
+      } catch (e) {
+        document.getElementById("detalle-producto-cargando").textContent = "No se pudo cargar el producto.";
+      }
+    }
+    function cerrarDetallePedido_() { document.getElementById("modal-detalle-pedido").innerHTML = ""; }
+
+    /**
+     * Carga la vista de solo-lectura de productos, con filtros de categoría
+     * y rango de precio (reutiliza filtros que listarProductos_ ya soporta).
+     * @param {boolean} silencioso - si es true, no muestra "Cargando…" (usado
+     *   al refrescar en segundo plano tras un cambio de estado de pedido).
+     */
+    async function cargarProductos_(silencioso) {
+      const tbody = document.getElementById("tabla-productos");
+      if (!silencioso) tbody.innerHTML = "<tr><td colspan='6'>Cargando…</td></tr>";
+      const filtros = {
+        categoria: document.getElementById("filtro-categoria-productos").value,
+        precioMin: document.getElementById("filtro-precio-min-productos").value,
+        precioMax: document.getElementById("filtro-precio-max-productos").value
+      };
+      try {
+        const productos = await apiTelovendo.listarProductos(filtros);
+        cacheProductos_ = productos;
+        actualizarBannerAlerta_();
+        poblarFiltroReportes_();
+        llenarFiltroCategorias_(productos);
+        if (!productos.length) { tbody.innerHTML = "<tr><td colspan='6'>No hay productos con ese filtro.</td></tr>"; return; }
         tbody.innerHTML = productos.map(p => `
           <tr>
             <td class="sku">${p.id}</td>
-            <td>${p.nombre}</td>
+            <td>${p.nombre} ${p.agotado ? '<span style="color:var(--color-advertencia); font-size:0.75rem; font-weight:600;">· AGOTADO</span>' : ''}</td>
             <td class="precio">${formatearPrecio(p.precio)}</td>
             <td>${p.stock}</td>
             <td>${p.metodosPago}</td>
@@ -155,6 +375,15 @@
       } catch (e) {
         tbody.innerHTML = "<tr><td colspan='6'>No se pudo conectar con el backend.</td></tr>";
       }
+    }
+    document.getElementById("btn-filtrar-productos").addEventListener("click", () => cargarProductos_(false));
+
+    /** Llena el <select> de categorías del filtro con las categorías reales ya existentes (dinámico, cero hardcode). */
+    function llenarFiltroCategorias_(productos) {
+      const select = document.getElementById("filtro-categoria-productos");
+      const actual = select.value;
+      const categorias = [...new Set(productos.map(p => p.categoria).filter(Boolean))];
+      select.innerHTML = `<option value="">Todas las categorías</option>` + categorias.map(c => `<option ${c === actual ? 'selected' : ''}>${c}</option>`).join("");
     }
 
     document.getElementById("form-producto").addEventListener("submit", async (e) => {
@@ -180,7 +409,251 @@
       }
     });
 
+    /* =========================================================================
+       REPORTES (v4)
+       ========================================================================= */
+
+    document.getElementById("btn-generar-reporte").addEventListener("click", generarReporte_);
+
+    /** Devuelve el conjunto de reportes marcados en los checkboxes (ej. Set{"ventas","masVendidos"}). */
+    function reportesSeleccionados_() {
+      return new Set([...document.querySelectorAll(".chk-reporte:checked")].map(c => c.value));
+    }
+
+    document.getElementById("btn-toggle-filtro-reportes").addEventListener("click", () => {
+      document.getElementById("panel-filtro-reportes").classList.toggle("oculto");
+    });
+
+    /**
+     * Genera dinámicamente los checkboxes de "Categorías" y "Productos" del
+     * filtro de reportes, a partir de los productos REALES ya cargados en
+     * cacheProductos_ (la misma caché que usa el banner de alerta de stock,
+     * así no se hace ninguna llamada extra al backend). Se reemplaza por
+     * completo su contenido cada vez que se llama, para reflejar altas/bajas
+     * de productos sin necesidad de recargar la página.
+     * Invocada por: cargarProductos_() cada vez que trae datos nuevos.
+     */
+    function poblarFiltroReportes_() {
+      const contCategorias = document.getElementById("chk-categorias-reporte");
+      const contProductos = document.getElementById("chk-productos-reporte");
+      if (!contCategorias || !contProductos) return;
+
+      // Se guarda qué estaba marcado antes de repoblar, para no perder la
+      // selección del admin si simplemente se refrescó la lista de productos.
+      const categoriasMarcadas = new Set([...document.querySelectorAll(".chk-filtro-categoria:checked")].map(c => c.value));
+      const productosMarcados = new Set([...document.querySelectorAll(".chk-filtro-producto:checked")].map(c => c.value));
+
+      const categorias = [...new Set(cacheProductos_.map(p => p.categoria).filter(Boolean))].sort();
+      contCategorias.innerHTML = categorias.length
+        ? categorias.map(c => `<label style="display:flex; align-items:center; gap:8px; min-height:32px; font-size:0.9rem;"><input type="checkbox" class="chk-filtro-categoria" value="${c}" ${categoriasMarcadas.has(c) ? 'checked' : ''}> ${c}</label>`).join("")
+        : `<p style="color:#9a9282; font-size:0.85rem;">Aún no hay categorías.</p>`;
+
+      contProductos.innerHTML = cacheProductos_.length
+        ? cacheProductos_.map(p => `<label style="display:flex; align-items:center; gap:8px; min-height:32px; font-size:0.9rem;"><input type="checkbox" class="chk-filtro-producto" value="${p.nombre}" ${productosMarcados.has(p.nombre) ? 'checked' : ''}> ${p.nombre}</label>`).join("")
+        : `<p style="color:#9a9282; font-size:0.85rem;">Aún no hay productos.</p>`;
+    }
+
+    /**
+     * Lee qué categorías y productos están marcados en el panel de filtro.
+     * @returns {{categorias: Array<string>, productos: Array<string>}} vacío = sin filtro (mostrar todo)
+     */
+    function seleccionFiltroReportes_() {
+      return {
+        categorias: [...document.querySelectorAll(".chk-filtro-categoria:checked")].map(c => c.value),
+        productos: [...document.querySelectorAll(".chk-filtro-producto:checked")].map(c => c.value)
+      };
+    }
+
+    /**
+     * Filtra un arreglo de productos: si no hay nada seleccionado en el panel
+     * (categorías y productos vacíos), retorna el arreglo completo sin
+     * cambios (comportamiento por defecto = mostrar todo). Si hay selección,
+     * incluye un producto si su categoría está marcada O su nombre está
+     * marcado (unión, no intersección — coherente con "colchones y señuelos").
+     * @param {Array<Object>} productos - cada uno con .nombre y opcionalmente .categoria
+     * @param {{categorias: Array<string>, productos: Array<string>}} seleccion
+     * @returns {Array<Object>}
+     */
+    function filtrarProductosPorSeleccion_(productos, seleccion) {
+      if (!seleccion.categorias.length && !seleccion.productos.length) return productos;
+      return productos.filter(p =>
+        seleccion.categorias.includes(p.categoria) || seleccion.productos.includes(p.nombre)
+      );
+    }
+
+    /** Pide el paquete de reportes al backend (una sola llamada) y renderiza solo los seleccionados, aplicando el filtro si hay uno. */
+    async function generarReporte_() {
+      const cont = document.getElementById("contenido-reportes");
+      const seleccion = reportesSeleccionados_();
+      if (!seleccion.size) { cont.innerHTML = "<p style='color:var(--color-advertencia);'>Selecciona al menos un reporte para generar.</p>"; return; }
+      cont.innerHTML = "<p style='color:#6b7280;'>Generando reportes…</p>";
+      const opciones = {
+        fechaInicio: document.getElementById("reporte-fecha-inicio").value,
+        fechaFin: document.getElementById("reporte-fecha-fin").value
+      };
+      try {
+        const r = await apiTelovendo.obtenerReportes(opciones);
+        if (r.error) { cont.innerHTML = `<p style="color:var(--color-advertencia);">${r.error}</p>`; return; }
+        cacheReportes_ = r;
+
+        const seleccionFiltro = seleccionFiltroReportes_();
+
+        // Inventario ya filtrado (por categoría o producto seleccionados) — es la fuente
+        // de verdad para "Inventario" y también para "Stock bajo" (así el
+        // filtro queda consistente entre ambos reportes sin llamar de nuevo
+        // al backend). Umbral de stock bajo = 3, igual que el valor por
+        // defecto que ya usa generarReportes_() en el servidor.
+        const inventarioFiltrado = filtrarProductosPorSeleccion_(r.inventarioValorizado.productos, seleccionFiltro);
+        const stockBajoFiltrado = inventarioFiltrado.filter(p => p.stock <= 3);
+        const valorTotalFiltrado = inventarioFiltrado.reduce((s, p) => s + p.valorTotal, 0);
+        const unidadesTotalesFiltrado = inventarioFiltrado.reduce((s, p) => s + p.stock, 0);
+
+        // "Más vendidos" no trae categoría desde el backend, así que si se
+        // filtró por categoría, este reporte específico no se ve afectado
+        // por esa parte del filtro (solo por selección directa de producto).
+        const masVendidosFiltrado = seleccionFiltro.productos.length
+          ? r.productosMasVendidos.filter(p => seleccionFiltro.productos.includes(p.nombre))
+          : r.productosMasVendidos;
+
+        let html = "";
+
+        if (seleccionFiltro.categorias.length || seleccionFiltro.productos.length) {
+          const partes = [...seleccionFiltro.categorias, ...seleccionFiltro.productos];
+          html += `<p style="color:#6b7280; font-size:0.85rem; margin-bottom:14px;">Filtrado por: <strong>${partes.join(", ")}</strong></p>`;
+        }
+
+        if (seleccion.has("ventas")) {
+          html += `
+          <div class="tarjetas-reporte">
+            <div class="tarjeta-reporte"><div class="valor">${formatearPrecio(r.ventasPeriodo.totalCOP)}</div><div class="etiqueta">Ventas del periodo</div></div>
+            <div class="tarjeta-reporte"><div class="valor">${r.ventasPeriodo.cantidadPedidos}</div><div class="etiqueta"># Pedidos (no pendientes)</div></div>
+          </div>`;
+        }
+
+        if (seleccion.has("masVendidos")) {
+          html += `
+          <div class="bloque-reporte">
+            <h3>Productos más vendidos</h3>
+            ${masVendidosFiltrado.length ? `
+              <table><thead><tr><th>Producto</th><th>Unidades entregadas</th></tr></thead>
+              <tbody>${masVendidosFiltrado.map(p => `<tr><td>${p.nombre}</td><td>${p.unidadesVendidas}</td></tr>`).join('')}</tbody></table>
+            ` : `<p style="color:#6b7280;">${(seleccionFiltro.categorias.length || seleccionFiltro.productos.length) ? 'Ningún producto vendido coincide con el filtro.' : 'Aún no hay pedidos entregados.'}</p>`}
+          </div>`;
+        }
+
+        if (seleccion.has("inventario")) {
+          html += `
+          <div class="bloque-reporte">
+            <h3>Inventario valorizado</h3>
+            <div class="tarjetas-reporte">
+              <div class="tarjeta-reporte"><div class="valor">${formatearPrecio(valorTotalFiltrado)}</div><div class="etiqueta">Valor total ${(seleccionFiltro.categorias.length || seleccionFiltro.productos.length) ? 'del filtro' : 'del inventario'}</div></div>
+              <div class="tarjeta-reporte"><div class="valor">${unidadesTotalesFiltrado}</div><div class="etiqueta">Unidades totales en stock</div></div>
+            </div>
+            ${inventarioFiltrado.length ? `
+              <table><thead><tr><th>Producto</th><th>Categoría</th><th>Stock</th><th>Precio unitario</th><th>Valor total</th></tr></thead>
+              <tbody>${inventarioFiltrado.map(p => `<tr><td>${p.nombre} ${p.agotado ? '<span style="color:var(--color-advertencia); font-size:0.75rem; font-weight:600;">· AGOTADO</span>' : ''}</td><td>${p.categoria || '—'}</td><td>${p.stock}</td><td>${formatearPrecio(p.precioUnitario)}</td><td>${formatearPrecio(p.valorTotal)}</td></tr>`).join('')}</tbody></table>
+            ` : `<p style="color:#6b7280;">${(seleccionFiltro.categorias.length || seleccionFiltro.productos.length) ? 'Ningún producto coincide con el filtro.' : 'Aún no hay productos publicados.'}</p>`}
+          </div>`;
+        }
+
+        if (seleccion.has("stockBajo")) {
+          html += `
+          <div class="bloque-reporte">
+            <h3>Stock bajo / agotado</h3>
+            ${stockBajoFiltrado.length ? `
+              <table><thead><tr><th>Producto</th><th>Stock</th></tr></thead>
+              <tbody>${stockBajoFiltrado.map(p => `<tr><td>${p.nombre}</td><td>${p.stock === 0 ? '<strong style="color:var(--color-advertencia);">Agotado</strong>' : p.stock}</td></tr>`).join('')}</tbody></table>
+            ` : `<p style="color:#6b7280;">Ningún producto con stock bajo${(seleccionFiltro.categorias.length || seleccionFiltro.productos.length) ? ' dentro del filtro' : ''}. 👍</p>`}
+          </div>`;
+        }
+
+        if (seleccion.has("porEstado")) {
+          html += `
+          <div class="bloque-reporte">
+            <h3>Pedidos por estado (valorizado)</h3>
+            <table><thead><tr><th>Estado</th><th># Pedidos</th><th>Unidades</th><th>Valor (COP)</th></tr></thead>
+            <tbody>${Object.entries(r.pedidosPorEstado).map(([estado, datos]) => `<tr><td>${estado}</td><td>${datos.cantidadPedidos}</td><td>${datos.unidades}</td><td>${formatearPrecio(datos.valorTotalCOP)}</td></tr>`).join('') || '<tr><td colspan="4">Sin datos en este periodo.</td></tr>'}</tbody></table>
+          </div>`;
+        }
+
+        if (seleccion.has("ingresos")) {
+          html += `
+          <div class="bloque-reporte">
+            <h3>Ingresos por método de pago</h3>
+            <table><thead><tr><th>Método</th><th>Ingreso</th></tr></thead>
+            <tbody>${Object.entries(r.ingresosPorMetodo).map(([m, monto]) => `<tr><td>${m}</td><td>${formatearPrecio(monto)}</td></tr>`).join('') || '<tr><td colspan="2">Sin datos en este periodo.</td></tr>'}</tbody></table>
+          </div>`;
+        }
+
+        cont.innerHTML = html;
+      } catch (e) {
+        cont.innerHTML = "<p style='color:#6b7280;'>No se pudo generar el reporte (¿backend desplegado con la versión más reciente?).</p>";
+      }
+    }
+
+    /** Exporta a .xlsx solo los reportes marcados en los checkboxes, respetando el mismo filtro de producto/categoría que la vista en pantalla. */
+    document.getElementById("btn-exportar-excel").addEventListener("click", () => {
+      if (!cacheReportes_) { alert('Primero genera un reporte con el botón "Generar".'); return; }
+      const seleccion = reportesSeleccionados_();
+      if (!seleccion.size) { alert("Selecciona al menos un reporte para exportar."); return; }
+      const r = cacheReportes_;
+      const seleccionFiltro = seleccionFiltroReportes_();
+      const inventarioFiltrado = filtrarProductosPorSeleccion_(r.inventarioValorizado.productos, seleccionFiltro);
+      const stockBajoFiltrado = inventarioFiltrado.filter(p => p.stock <= 3);
+      const masVendidosFiltrado = seleccionFiltro.productos.length
+        ? r.productosMasVendidos.filter(p => seleccionFiltro.productos.includes(p.nombre))
+        : r.productosMasVendidos;
+      const libro = XLSX.utils.book_new();
+
+      if (seleccion.has("ventas")) {
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet([
+          { Métrica: "Ventas del periodo (COP)", Valor: r.ventasPeriodo.totalCOP },
+          { Métrica: "# Pedidos (no pendientes)", Valor: r.ventasPeriodo.cantidadPedidos }
+        ]), "Resumen");
+      }
+
+      if (seleccion.has("masVendidos")) {
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(
+          masVendidosFiltrado.map(p => ({ Producto: p.nombre, "Unidades entregadas": p.unidadesVendidas }))
+        ), "Más vendidos");
+      }
+
+      if (seleccion.has("inventario")) {
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(
+          inventarioFiltrado.map(p => ({
+            Producto: p.nombre, Categoría: p.categoria, Stock: p.stock,
+            "Precio unitario": p.precioUnitario, "Valor total": p.valorTotal,
+            Estado: p.agotado ? "Agotado" : "Disponible"
+          }))
+        ), "Inventario valorizado");
+      }
+
+      if (seleccion.has("stockBajo")) {
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(
+          stockBajoFiltrado.map(p => ({ Producto: p.nombre, Stock: p.stock }))
+        ), "Stock bajo");
+      }
+
+      if (seleccion.has("porEstado")) {
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(
+          Object.entries(r.pedidosPorEstado).map(([Estado, datos]) => ({
+            Estado, "# Pedidos": datos.cantidadPedidos, Unidades: datos.unidades, "Valor (COP)": datos.valorTotalCOP
+          }))
+        ), "Pedidos por estado");
+      }
+
+      if (seleccion.has("ingresos")) {
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(
+          Object.entries(r.ingresosPorMetodo).map(([Método, Ingreso]) => ({ Método, Ingreso }))
+        ), "Ingresos por método");
+      }
+
+      if (libro.SheetNames.length === 0) { alert("No hay reportes seleccionados para exportar."); return; }
+      XLSX.writeFile(libro, `reporte_telovendo_${new Date().toISOString().slice(0,10)}.xlsx`);
+    });
+
     cargarPedidos_();
+    cargarProductos_(true); // carga en segundo plano para tener el banner de alerta listo desde el inicio
   </script>
 </body>
 </html>

@@ -66,26 +66,43 @@
           <div>
             <h1 style="font-size:1.7rem;">${p.nombre}</h1>
             <p class="precio" style="font-size:1.6rem; font-weight:700;">${formatearPrecio(p.precio)}</p>
+            ${p.agotado ? `<p><span class="timbre" style="border-color:var(--color-advertencia); color:var(--color-advertencia); border-style:solid; width:auto; padding:4px 14px; border-radius:100px; font-family:var(--fuente-datos); font-size:0.78rem;">Agotado</span></p>` : ''}
             <p style="color:#4b5563;">${p.descripcion || ''}</p>
 
             <h3 style="margin-top:20px;">Método de pago</h3>
             <div class="metodos-pago" id="lista-metodos">
               ${metodos.map(m => `
                 <label class="metodo-pago">
-                  <input type="radio" name="metodo" value="${m}">
+                  <input type="radio" name="metodo" value="${m}" ${p.agotado ? 'disabled' : ''}>
                   <span>${etiquetaMetodo_(m)}</span>
                 </label>`).join('')}
             </div>
             <div id="resultado-cripto"></div>
 
             <div class="sticky-movil">
-              <button class="boton boton--primario" style="width:100%;" id="btn-comprar">Comprar ahora</button>
+              <button class="boton boton--primario" style="width:100%;" id="btn-comprar" ${p.agotado ? 'disabled' : ''}>
+                ${p.agotado ? 'Agotado' : 'Comprar ahora'}
+              </button>
             </div>
           </div>
         `;
 
+        // NUEVO (v4): si está agotado, el botón queda deshabilitado visualmente
+        // y no se activa el click (defensa en cliente; el servidor también
+        // rechaza la compra en crearPedido_ como defensa real).
+        if (p.agotado) {
+          const btn = document.getElementById("btn-comprar");
+          btn.style.opacity = "0.6";
+          btn.style.cursor = "not-allowed";
+        }
+
         document.querySelectorAll('input[name="metodo"]').forEach(radio => {
           radio.addEventListener("change", () => actualizarCotizacion_(radio.value, p.precio));
+        });
+
+        document.getElementById("btn-comprar").addEventListener("click", () => {
+          if (p.agotado) return;
+          window.location.href = `carrito.html?id=${idProducto}`;
         });
       } catch (err) {
         cont.innerHTML = "<p style='color:#6b7280;'>No se pudo cargar el producto (¿backend desplegado?).</p>";

@@ -12,7 +12,7 @@
  */
 
 // Reemplazar por la URL real al publicar el Web App de Apps Script.
-const BASE_URL = "https://script.google.com/macros/s/AKfycbzK0TtbzEBgr4-IIYzKFIzr_j_LYS-Gv4huafVfcDe1KzqM0-eYDsvRGv0Va0jsuMW0tw/exec";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbxNUDeaXh3_ASjcKEDAdF73wRjAgZfy7Z0BIxX4eNWEbR8JV0ZJRBSJW57lXqy3af1uJA/exec";
 
 /**
  * Aplica BRAND_CONFIG al documento actual.
@@ -195,6 +195,19 @@ const apiTelovendo = {
       method: "POST",
       body: JSON.stringify({ accion: "guardarProducto", producto })
     });
+    return res.json();
+  },
+
+  /**
+   * Trae el paquete completo de reportes administrativos (ventas, productos
+   * más vendidos, stock bajo, pedidos por estado, ingresos por método).
+   * Usada por panel-admin.html en la pestaña "Reportes".
+   * @param {Object} opciones - { fechaInicio?, fechaFin?, umbralStockBajo? }
+   * @returns {Promise<Object>}
+   */
+  async obtenerReportes(opciones = {}) {
+    const params = new URLSearchParams({ accion: "obtenerReportes", ...opciones });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`);
     return res.json();
   }
 };

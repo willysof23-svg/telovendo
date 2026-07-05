@@ -79,7 +79,10 @@
         }
         contenedor.innerHTML = productos.map(p => `
           <a class="boleta" href="producto.html?id=${p.id}" style="text-decoration:none; color:inherit;">
-            <div class="boleta__imagen"><img src="${p.imagenPortada || 'assets/producto-placeholder.svg'}" alt="${p.nombre}"></div>
+            <div class="boleta__imagen">
+              ${p.agotado ? '<span class="boleta__insignia boleta__insignia--oferta">Agotado</span>' : ''}
+              <img src="${p.imagenPortada || 'assets/producto-placeholder.svg'}" alt="${p.nombre}">
+            </div>
             <div class="boleta__perforacion"></div>
             <div class="boleta__cuerpo">
               <p class="boleta__titulo">${p.nombre}</p>
