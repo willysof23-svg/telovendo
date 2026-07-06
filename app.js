@@ -199,6 +199,21 @@ const apiTelovendo = {
   },
 
   /**
+   * Activa o desactiva un producto (equivalente a "eliminarlo" del catálogo
+   * público sin borrar su historial). Reversible en cualquier momento.
+   * @param {string} idProducto
+   * @param {boolean} activo
+   * @returns {Promise<Object>} { ok, error? }
+   */
+  async cambiarActivoProducto(idProducto, activo) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "cambiarActivoProducto", idProducto, activo })
+    });
+    return res.json();
+  },
+
+  /**
    * Trae el paquete completo de reportes administrativos (ventas, productos
    * más vendidos, stock bajo, pedidos por estado, ingresos por método).
    * Usada por panel-admin.html en la pestaña "Reportes".

@@ -100,6 +100,17 @@
       if (idProductoActual) cargarGaleria_();
     });
 
+    // NUEVO (v7): si se llega aquí con ?id=PROD-XXXX en la URL (ej. desde el
+    // botón "Fotos" del panel de administración), se rellena el campo y se
+    // carga la galería automáticamente. Si no hay parámetro, el
+    // comportamiento es idéntico al de siempre (el admin escribe el ID a mano).
+    const idDesdeUrl = new URLSearchParams(window.location.search).get("id");
+    if (idDesdeUrl) {
+      document.getElementById("input-id-producto").value = idDesdeUrl;
+      idProductoActual = idDesdeUrl;
+      cargarGaleria_();
+    }
+
     const zona = document.getElementById("zona-carga");
     const inputArchivo = document.getElementById("input-archivo");
     zona.addEventListener("click", () => inputArchivo.click());

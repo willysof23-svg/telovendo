@@ -126,8 +126,8 @@
         </div>
         <div class="tabla-scroll">
           <table>
-            <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Métodos</th><th></th></tr></thead>
-            <tbody id="tabla-productos"><tr><td colspan="6">Cargando…</td></tr></tbody>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Métodos</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-productos"><tr><td colspan="7">Cargando…</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -166,6 +166,7 @@
       </section>
 
       <section id="tab-nuevo" class="oculto">
+        <h2 id="titulo-form-producto" style="font-size:1.15rem; margin-bottom:14px;">Publicar producto</h2>
         <form class="form-producto" id="form-producto" style="max-width:520px;">
           <input type="hidden" id="prod-id">
           <div class="campo"><label>Nombre</label><input type="text" id="prod-nombre" required></div>
@@ -184,7 +185,8 @@
               <label><input type="checkbox" class="chk-metodo-pago" value="usdc"> USDC</label>
             </div>
           </div>
-          <button type="submit" class="boton boton--primario">Guardar producto</button>
+          <button type="submit" class="boton boton--primario" id="btn-guardar-producto">Guardar producto</button>
+          <button type="button" class="boton boton--fantasma oculto" id="btn-cancelar-edicion" style="margin-left:8px;">Cancelar edición</button>
         </form>
         <p id="mensaje-guardado" style="color:var(--color-primario); font-weight:600;"></p>
         <p style="margin-top:20px;">
@@ -348,13 +350,19 @@
      * @param {boolean} silencioso - si es true, no muestra "Cargando…" (usado
      *   al refrescar en segundo plano tras un cambio de estado de pedido).
      */
+    /**
+     * Carga la vista de productos para el ADMIN — a diferencia del catálogo
+     * público, aquí se piden también los productos inactivos
+     * (incluirInactivos:true) para que el admin pueda reactivarlos si quiere.
+     */
     async function cargarProductos_(silencioso) {
       const tbody = document.getElementById("tabla-productos");
-      if (!silencioso) tbody.innerHTML = "<tr><td colspan='6'>Cargando…</td></tr>";
+      if (!silencioso) tbody.innerHTML = "<tr><td colspan='7'>Cargando…</td></tr>";
       const filtros = {
         categoria: document.getElementById("filtro-categoria-productos").value,
         precioMin: document.getElementById("filtro-precio-min-productos").value,
-        precioMax: document.getElementById("filtro-precio-max-productos").value
+        precioMax: document.getElementById("filtro-precio-max-productos").value,
+        incluirInactivos: true
       };
       try {
         const productos = await apiTelovendo.listarProductos(filtros);
@@ -362,21 +370,84 @@
         actualizarBannerAlerta_();
         poblarFiltroReportes_();
         llenarFiltroCategorias_(productos);
-        if (!productos.length) { tbody.innerHTML = "<tr><td colspan='6'>No hay productos con ese filtro.</td></tr>"; return; }
+        if (!productos.length) { tbody.innerHTML = "<tr><td colspan='7'>No hay productos con ese filtro.</td></tr>"; return; }
         tbody.innerHTML = productos.map(p => `
-          <tr>
+          <tr style="${p.activo ? '' : 'opacity:0.55;'}">
             <td class="sku">${p.id}</td>
             <td>${p.nombre} ${p.agotado ? '<span style="color:var(--color-advertencia); font-size:0.75rem; font-weight:600;">· AGOTADO</span>' : ''}</td>
             <td class="precio">${formatearPrecio(p.precio)}</td>
             <td>${p.stock}</td>
             <td>${p.metodosPago}</td>
-            <td><a href="admin-archivos.html">Archivos</a></td>
+            <td>${p.activo ? '<span style="color:var(--color-primario); font-weight:600; font-size:0.8rem;">Activo</span>' : '<span style="color:#9a9282; font-weight:600; font-size:0.8rem;">Inactivo</span>'}</td>
+            <td style="white-space:nowrap;">
+              <button class="boton boton--fantasma" style="padding:6px 10px; font-size:0.8rem; min-height:36px;" onclick="cargarProductoParaEditar_('${p.id}')">Editar</button>
+              <button class="boton boton--fantasma" style="padding:6px 10px; font-size:0.8rem; min-height:36px;" onclick="alternarActivoProducto_('${p.id}', ${!p.activo})">${p.activo ? 'Desactivar' : 'Activar'}</button>
+              <a href="admin-archivos.html?id=${p.id}" style="font-size:0.8rem;">Fotos</a>
+            </td>
           </tr>`).join("");
       } catch (e) {
-        tbody.innerHTML = "<tr><td colspan='6'>No se pudo conectar con el backend.</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='7'>No se pudo conectar con el backend.</td></tr>";
       }
     }
     document.getElementById("btn-filtrar-productos").addEventListener("click", () => cargarProductos_(false));
+
+    /**
+     * Carga un producto existente dentro del formulario de "Publicar
+     * producto" para editarlo (rellena todos los campos, incluido el ID
+     * oculto, que es lo que le indica a guardarProducto_ que debe ACTUALIZAR
+     * en vez de crear uno nuevo). Cambia a la pestaña correspondiente.
+     * @param {string} idProducto
+     */
+    function cargarProductoParaEditar_(idProducto) {
+      const p = cacheProductos_.find(x => x.id === idProducto);
+      if (!p) return;
+      document.getElementById("prod-id").value = p.id;
+      document.getElementById("prod-nombre").value = p.nombre || "";
+      document.getElementById("prod-descripcion").value = p.descripcion || "";
+      document.getElementById("prod-precio").value = p.precio || "";
+      document.getElementById("prod-categoria").value = p.categoria || "";
+      document.getElementById("prod-stock").value = p.stock || "";
+      const metodosActuales = (p.metodosPago || "").split(",").map(m => m.trim());
+      document.querySelectorAll(".chk-metodo-pago").forEach(chk => chk.checked = metodosActuales.includes(chk.value));
+
+      document.getElementById("titulo-form-producto").textContent = `Editando: ${p.nombre}`;
+      document.getElementById("btn-guardar-producto").textContent = "Actualizar producto";
+      document.getElementById("btn-cancelar-edicion").classList.remove("oculto");
+      document.getElementById("mensaje-guardado").textContent = "";
+
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
+      document.querySelector('.tab[data-tab="nuevo"]').classList.add("activa");
+      ["pedidos", "productos", "nuevo", "reportes"].forEach(id =>
+        document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== "nuevo"));
+    }
+
+    /** Vuelve el formulario al modo "crear producto nuevo" (limpia el ID oculto y los textos). */
+    function cancelarEdicionProducto_() {
+      document.getElementById("form-producto").reset();
+      document.getElementById("prod-id").value = "";
+      document.getElementById("titulo-form-producto").textContent = "Publicar producto";
+      document.getElementById("btn-guardar-producto").textContent = "Guardar producto";
+      document.getElementById("btn-cancelar-edicion").classList.add("oculto");
+      document.getElementById("mensaje-guardado").textContent = "";
+    }
+    document.getElementById("btn-cancelar-edicion").addEventListener("click", cancelarEdicionProducto_);
+
+    /**
+     * Activa o desactiva un producto (equivalente a "eliminarlo" del
+     * catálogo sin borrar su historial — Regla 1). Reversible: un producto
+     * desactivado puede reactivarse con el mismo botón en cualquier momento.
+     * @param {string} idProducto
+     * @param {boolean} nuevoValorActivo
+     */
+    async function alternarActivoProducto_(idProducto, nuevoValorActivo) {
+      const confirmacion = nuevoValorActivo
+        ? true
+        : confirm("Este producto dejará de verse en el catálogo público (no se borra, se puede reactivar cuando quieras). ¿Continuar?");
+      if (!confirmacion) return;
+      const res = await apiTelovendo.cambiarActivoProducto(idProducto, nuevoValorActivo);
+      if (!res.ok) { alert(res.error || "No se pudo cambiar el estado del producto."); return; }
+      cargarProductos_(true);
+    }
 
     /** Llena el <select> de categorías del filtro con las categorías reales ya existentes (dinámico, cero hardcode). */
     function llenarFiltroCategorias_(productos) {
@@ -388,6 +459,7 @@
 
     document.getElementById("form-producto").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const esEdicion = !!document.getElementById("prod-id").value;
       const metodos = [...document.querySelectorAll('.chk-metodo-pago:checked')].map(c => c.value).join(",");
       const producto = {
         id: document.getElementById("prod-id").value || undefined,
@@ -401,8 +473,12 @@
       const res = await apiTelovendo.guardarProducto(producto);
       const msg = document.getElementById("mensaje-guardado");
       if (res.ok) {
-        msg.textContent = `Producto guardado con ID: ${res.id}. Cópialo para subir sus archivos.`;
-        document.getElementById("form-producto").reset();
+        cancelarEdicionProducto_(); // primero resetea el formulario (esto también limpia el mensaje)
+        msg.style.color = "var(--color-primario)";
+        msg.textContent = esEdicion
+          ? `Producto "${producto.nombre}" actualizado correctamente.`
+          : `Producto guardado con ID: ${res.id}. Ve a "Fotos" en la pestaña Productos para subir sus imágenes.`;
+        cargarProductos_(true); // refresca la tabla y el banner de alerta con los datos ya actualizados
       } else {
         msg.style.color = "var(--color-advertencia)";
         msg.textContent = res.error || "No se pudo guardar el producto.";
