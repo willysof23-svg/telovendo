@@ -176,12 +176,12 @@
           <div class="campo">
             <label>Métodos de pago aceptados</label>
             <div class="checkboxes">
-              <label><input type="checkbox" value="tarjeta"> Tarjeta</label>
-              <label><input type="checkbox" value="transferencia"> Transferencia</label>
-              <label><input type="checkbox" value="contraentrega"> Contra entrega</label>
-              <label><input type="checkbox" value="btc"> BTC</label>
-              <label><input type="checkbox" value="usdt"> USDT</label>
-              <label><input type="checkbox" value="usdc"> USDC</label>
+              <label><input type="checkbox" class="chk-metodo-pago" value="tarjeta"> Tarjeta</label>
+              <label><input type="checkbox" class="chk-metodo-pago" value="transferencia"> Transferencia</label>
+              <label><input type="checkbox" class="chk-metodo-pago" value="contraentrega"> Contra entrega</label>
+              <label><input type="checkbox" class="chk-metodo-pago" value="btc"> BTC</label>
+              <label><input type="checkbox" class="chk-metodo-pago" value="usdt"> USDT</label>
+              <label><input type="checkbox" class="chk-metodo-pago" value="usdc"> USDC</label>
             </div>
           </div>
           <button type="submit" class="boton boton--primario">Guardar producto</button>
@@ -388,7 +388,7 @@
 
     document.getElementById("form-producto").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const metodos = [...document.querySelectorAll('.checkboxes input:checked')].map(c => c.value).join(",");
+      const metodos = [...document.querySelectorAll('.chk-metodo-pago:checked')].map(c => c.value).join(",");
       const producto = {
         id: document.getElementById("prod-id").value || undefined,
         nombre: document.getElementById("prod-nombre").value,
