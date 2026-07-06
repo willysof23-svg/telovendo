@@ -73,6 +73,14 @@
       };
       try {
         const productos = await apiTelovendo.listarProductos(filtros);
+
+        // NUEVO: llenar el selector de categorías con las categorías REALES
+        // de los productos (nunca texto fijo). Solo se repuebla cuando no
+        // hay un filtro de categoría activo, para que el listado de
+        // opciones no se reduzca una vez el comprador ya eligió una
+        // categoría específica.
+        if (!filtros.categoria) poblarFiltroCategoriasCatalogo_(productos);
+
         if (!Array.isArray(productos) || productos.length === 0) {
           contenedor.innerHTML = "<p style='color:#6b7280;'>No se encontraron productos con esos filtros.</p>";
           return;
@@ -94,6 +102,22 @@
         contenedor.innerHTML = "<p style='color:#6b7280;'>No se pudo conectar con el backend todavía.</p>";
       }
     }
+
+    /**
+     * Llena el <select> de categorías del catálogo público con las
+     * categorías reales que existen entre los productos activos — nunca
+     * texto fijo en el HTML. Conserva la selección actual si ya había una.
+     * @param {Array<Object>} productos - productos ya cargados (con .categoria)
+     * Invocada por: cargarCatalogo()
+     */
+    function poblarFiltroCategoriasCatalogo_(productos) {
+      const select = document.getElementById("filtro-categoria");
+      const actual = select.value;
+      const categorias = [...new Set(productos.map(p => p.categoria).filter(Boolean))].sort();
+      select.innerHTML = `<option value="">Todas las categorías</option>` +
+        categorias.map(c => `<option value="${c}" ${c === actual ? 'selected' : ''}>${c}</option>`).join("");
+    }
+
     document.getElementById("btn-aplicar-filtros").addEventListener("click", cargarCatalogo);
     cargarCatalogo();
   </script>
