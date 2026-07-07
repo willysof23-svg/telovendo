@@ -317,6 +317,21 @@ const apiTelovendo = {
     return res.json();
   },
 
+  /**
+   * Marca (o desmarca) un producto como destacado para la tarjeta del hero
+   * en index.html. Solo puede haber uno a la vez.
+   * @param {string} idProducto
+   * @param {boolean} destacado
+   * @returns {Promise<Object>} { ok, error? }
+   */
+  async marcarDestacado(idProducto, destacado) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "marcarDestacado", idProducto, destacado })
+    });
+    return res.json();
+  },
+
   /** Quita el logo personalizado (vuelve al logotipo de texto elegante por defecto). */
   async eliminarLogo() {
     const res = await fetch(BASE_URL, {

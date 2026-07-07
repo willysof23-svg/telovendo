@@ -433,7 +433,7 @@
         tbody.innerHTML = productos.map(p => `
           <tr style="${p.activo ? '' : 'opacity:0.55;'}">
             <td class="sku">${p.id}</td>
-            <td>${p.nombre} ${p.agotado ? '<span style="color:var(--color-advertencia); font-size:0.75rem; font-weight:600;">· AGOTADO</span>' : ''}</td>
+            <td>${p.nombre} ${p.agotado ? '<span style="color:var(--color-advertencia); font-size:0.75rem; font-weight:600;">· AGOTADO</span>' : ''} ${p.destacado ? '<span style="color:var(--color-secundario); font-size:0.75rem; font-weight:600;">★ EN PORTADA</span>' : ''}</td>
             <td class="precio">${formatearPrecio(p.precio)}</td>
             <td>${p.stock}</td>
             <td>${p.metodosPago}</td>
@@ -441,6 +441,7 @@
             <td style="white-space:nowrap;">
               <button class="boton boton--fantasma" style="padding:6px 10px; font-size:0.8rem; min-height:36px;" onclick="cargarProductoParaEditar_('${p.id}')">Editar</button>
               <button class="boton boton--fantasma" style="padding:6px 10px; font-size:0.8rem; min-height:36px;" onclick="alternarActivoProducto_('${p.id}', ${!p.activo})">${p.activo ? 'Desactivar' : 'Activar'}</button>
+              <button class="boton boton--fantasma" style="padding:6px 10px; font-size:0.8rem; min-height:36px;" onclick="alternarDestacadoProducto_('${p.id}', ${!p.destacado})">${p.destacado ? 'Quitar de portada' : 'Destacar en portada'}</button>
               <a href="admin-archivos.html?id=${p.id}" style="font-size:0.8rem;">Fotos</a>
             </td>
           </tr>`).join("");
@@ -505,6 +506,19 @@
       if (!confirmacion) return;
       const res = await apiTelovendo.cambiarActivoProducto(idProducto, nuevoValorActivo);
       if (!res.ok) { alert(res.error || "No se pudo cambiar el estado del producto."); return; }
+      cargarProductos_(true);
+    }
+
+    /**
+     * Marca o desmarca un producto como destacado para la tarjeta del hero
+     * en index.html. Solo puede haber un producto destacado a la vez — si
+     * ya había otro, el backend lo desmarca automáticamente.
+     * @param {string} idProducto
+     * @param {boolean} nuevoValorDestacado
+     */
+    async function alternarDestacadoProducto_(idProducto, nuevoValorDestacado) {
+      const res = await apiTelovendo.marcarDestacado(idProducto, nuevoValorDestacado);
+      if (!res.ok) { alert(res.error || "No se pudo actualizar el producto destacado."); return; }
       cargarProductos_(true);
     }
 

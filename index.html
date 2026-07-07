@@ -21,7 +21,6 @@
       <nav class="encabezado__nav">
         <a href="catalogo.html">Catálogo</a>
         <a href="#ofertas">Ofertas</a>
-        <a href="#vender">Vender</a>
         <a href="#ayuda">Ayuda</a>
       </nav>
       <div style="display:flex; align-items:center; gap:10px;">
@@ -34,36 +33,23 @@
 
   <main>
     <section class="hero">
-      <div class="contenedor hero__grid">
+      <div class="contenedor hero__grid" id="hero-grid">
         <div>
-          <span class="hero__eyebrow">● Pagos fiat y cripto verificados</span>
-          <h1>Vende hoy. Cóbralo en pesos o en bitcoin, tú decides.</h1>
+          <span class="hero__eyebrow">● Pagos en pesos y en cripto</span>
+          <h1>Todo lo que tengo para ti, en un solo lugar.</h1>
           <p style="max-width:46ch; color:#4b5563; font-size:1.05rem;">
-            Un marketplace donde cada producto elige sus propios métodos de pago,
-            cada venta queda trazada como un recibo, y cada compra llega con garantía.
+            Cada producto tiene su propio método de pago, cada compra queda
+            registrada como un recibo, y siempre hay garantía. Compra fácil,
+            rápido y directo conmigo.
           </p>
           <div class="hero__acciones">
             <a class="boton boton--primario" href="catalogo.html">Ver catálogo</a>
-            <a class="boton boton--fantasma" href="#vender">Empezar a vender</a>
           </div>
         </div>
-        <div>
-          <!-- Boleta destacada como elemento visual del hero -->
-          <div class="boleta" style="max-width:340px; margin-left:auto;">
-            <div class="boleta__imagen">
-              <span class="boleta__insignia">Más vendido</span>
-              <img src="https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=600&q=60" alt="Producto destacado">
-            </div>
-            <div class="boleta__perforacion"></div>
-            <div class="boleta__cuerpo">
-              <p class="boleta__titulo">Cámara instantánea retro</p>
-              <div class="boleta__fila-precio">
-                <span class="precio boleta__precio">$249.000</span>
-                <span class="timbre" title="Vendedor verificado">✓</span>
-              </div>
-              <div class="boleta__metodos">💳 Tarjeta · ₿ BTC · ₮ USDT</div>
-            </div>
-          </div>
+        <div id="hero-destacado-wrapper">
+          <!-- Se llena dinámicamente vía JS con el producto que el admin
+               marque como "destacado" en el panel. Si ninguno está marcado,
+               este contenedor se oculta y el hero pasa a una sola columna. -->
         </div>
       </div>
     </section>
@@ -115,11 +101,66 @@
         const productos = await apiTelovendo.listarProductos({ orden: "precioDesc" });
         if (!Array.isArray(productos) || productos.length === 0) {
           contenedor.innerHTML = "<p style='color:#6b7280;'>Aún no hay productos publicados.</p>";
+          ocultarHeroDestacado_();
           return;
         }
         contenedor.innerHTML = productos.slice(0, 8).map(tarjetaProducto_).join("");
+
+        // NUEVO (v9): la tarjeta del hero se llena con el producto que el
+        // admin marcó como "destacado" en el panel (control 100% manual,
+        // nunca datos inconsistentes o de relleno). Se reutiliza este mismo
+        // listado ya cargado, sin hacer una llamada extra al backend.
+        const productoDestacado = productos.find(p => p.destacado);
+        if (productoDestacado) {
+          renderHeroDestacado_(productoDestacado);
+        } else {
+          ocultarHeroDestacado_();
+        }
       } catch (err) {
         contenedor.innerHTML = "<p style='color:#6b7280;'>No se pudo conectar con el backend todavía (¿ya publicaste el Web App de Apps Script y actualizaste BASE_URL en app.js?).</p>";
+        ocultarHeroDestacado_();
+      }
+    }
+
+    /**
+     * Llena la tarjeta destacada del hero con los datos REALES de un
+     * producto (imagen, nombre, precio, métodos de pago) — nunca texto o
+     * imagen de relleno inconsistentes.
+     * @param {Object} p - producto marcado como destacado
+     * Invocada por: cargarDestacados()
+     */
+    function renderHeroDestacado_(p) {
+      document.getElementById("hero-destacado-wrapper").innerHTML = `
+        <a class="boleta" href="producto.html?id=${p.id}" style="max-width:340px; margin-left:auto; text-decoration:none; color:inherit; display:block;">
+          <div class="boleta__imagen">
+            <span class="boleta__insignia">Destacado</span>
+            <img src="${p.imagenPortada || 'assets/producto-placeholder.svg'}" alt="${p.nombre}">
+          </div>
+          <div class="boleta__perforacion"></div>
+          <div class="boleta__cuerpo">
+            <p class="boleta__titulo">${p.nombre}</p>
+            <div class="boleta__fila-precio">
+              <span class="precio boleta__precio">${formatearPrecio(p.precio)}</span>
+              <span class="timbre" title="Garantía">✓</span>
+            </div>
+            <div class="boleta__metodos">${(p.metodosPago || '').split(',').filter(Boolean).join(' · ')}</div>
+          </div>
+        </a>`;
+      document.getElementById("hero-grid").style.gridTemplateColumns = "";
+    }
+
+    /**
+     * Oculta la tarjeta destacada con elegancia (ningún producto marcado, o
+     * el backend no respondió) y ajusta el hero a una sola columna en vez
+     * de dejar un espacio en blanco desbalanceado.
+     * Invocada por: cargarDestacados()
+     */
+    function ocultarHeroDestacado_() {
+      const wrapper = document.getElementById("hero-destacado-wrapper");
+      wrapper.innerHTML = "";
+      const grid = document.getElementById("hero-grid");
+      if (window.matchMedia("(min-width: 900px)").matches) {
+        grid.style.gridTemplateColumns = "1fr";
       }
     }
 
