@@ -200,6 +200,26 @@
 
           <button class="boton boton--primario" id="btn-subir-logo" style="margin-top:8px;">Subir y aplicar logo</button>
           <button class="boton boton--fantasma" id="btn-quitar-logo" style="margin-top:8px; margin-left:8px;">Quitar logo (usar texto por defecto)</button>
+
+          <hr style="margin:32px 0; border:none; border-top:1px solid var(--color-linea);">
+
+          <h2 style="font-size:1.15rem; margin-bottom:6px;">Nombre de marca</h2>
+          <p style="color:#6b7280; font-size:0.9rem; margin-bottom:18px;">
+            Cambia el nombre que aparece en el sitio (ej. de "TELOVENDO" a "VentaGarage" para un
+            nuevo cliente). Si subiste un logo que ya incluye el nombre dentro de la imagen, el
+            texto se oculta automáticamente para no verse duplicado — puedes forzar que se vean
+            ambos con la casilla de abajo.
+          </p>
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Nombre a mostrar</label>
+            <input type="text" id="input-nombre-marca" placeholder="ej. VentaGarage" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; max-width:320px;">
+          </div>
+          <label style="display:flex; align-items:center; gap:8px; margin:12px 0; font-size:0.9rem;">
+            <input type="checkbox" id="chk-mostrar-nombre-con-logo"> Mostrar el nombre también cuando hay un logo subido
+          </label>
+          <div id="mensaje-error-nombre" class="mensaje-error"></div>
+          <div id="mensaje-ok-nombre" class="mensaje-ok"></div>
+          <button class="boton boton--primario" id="btn-guardar-nombre-marca">Guardar nombre de marca</button>
         </div>
       </section>
 
@@ -791,6 +811,9 @@
           vista.innerHTML = `<span style="font-family:var(--fuente-display); font-weight:600; font-size:1.4rem; color:var(--color-primario);">${window.BRAND_CONFIG.nombre_sitio}</span>`;
           estado.textContent = "Usando logotipo de texto por defecto (ningún logo subido todavía)";
         }
+        // NUEVO (v8.1): precargar el nombre de marca y la preferencia actual
+        document.getElementById("input-nombre-marca").value = (config && config.nombreMarca) || window.BRAND_CONFIG.nombre_sitio;
+        document.getElementById("chk-mostrar-nombre-con-logo").checked = !!(config && config.mostrarNombreConLogo);
       } catch (e) {
         estado.textContent = "No se pudo verificar el estado actual del logo.";
       }
@@ -849,6 +872,40 @@
       const el = document.getElementById("mensaje-ok-logo");
       el.textContent = msg; el.style.display = "block";
       document.getElementById("mensaje-error-logo").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+
+    /**
+     * Guarda el nombre de marca personalizado (ej. "VentaGarage") y la
+     * preferencia de mostrarlo junto al logo, para que cada cliente nuevo
+     * pueda tener su propia identidad sin tocar ningún archivo de código.
+     */
+    document.getElementById("btn-guardar-nombre-marca").addEventListener("click", async () => {
+      const nombre = document.getElementById("input-nombre-marca").value.trim();
+      if (!nombre) { mostrarErrorNombre_("Escribe un nombre de marca."); return; }
+      const mostrarNombreConLogo = document.getElementById("chk-mostrar-nombre-con-logo").checked;
+      try {
+        const res = await apiTelovendo.guardarNombreMarca({ nombreMarca: nombre, mostrarNombreConLogo });
+        if (res.ok) {
+          mostrarOkNombre_("Nombre de marca actualizado. Recarga cualquier página del sitio para verlo.");
+        } else {
+          mostrarErrorNombre_(res.error || "No se pudo guardar el nombre de marca.");
+        }
+      } catch (e) {
+        mostrarErrorNombre_("No se pudo conectar con el backend. Intenta de nuevo.");
+      }
+    });
+
+    function mostrarErrorNombre_(msg) {
+      const el = document.getElementById("mensaje-error-nombre");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-ok-nombre").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+    function mostrarOkNombre_(msg) {
+      const el = document.getElementById("mensaje-ok-nombre");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-error-nombre").style.display = "none";
       setTimeout(() => el.style.display = "none", 6000);
     }
 

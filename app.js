@@ -86,6 +86,24 @@ async function aplicarMarca() {
       const favicon = document.querySelector('link[rel="icon"]');
       if (favicon) favicon.setAttribute("href", configDinamica.faviconUrl);
     }
+
+    // NUEVO (v8.1): nombre de marca personalizado (ej. "VentaGarage" en vez
+    // de "TELOVENDO"), editable desde el panel sin tocar código.
+    if (configDinamica && configDinamica.nombreMarca) {
+      document.querySelectorAll('[data-marca="nombre_sitio"]').forEach(el => el.textContent = configDinamica.nombreMarca);
+    }
+
+    // NUEVO (v8.1): cuando hay un logo personalizado subido, la mayoría de
+    // los logos ya incluyen el nombre dentro de la imagen — por eso el
+    // texto se oculta automáticamente al lado, para no verse duplicado
+    // (ej. "[Logo VentaGarage] VentaGarage"). El admin puede activar
+    // "mostrarNombreConLogo" desde el panel si prefiere ver ambos juntos.
+    // Si no hay logo, el nombre SIEMPRE se muestra (logotipo de texto).
+    const hayLogoPersonalizado = !!(configDinamica && configDinamica.logoUrl);
+    const mostrarNombreJuntoAlLogo = !!(configDinamica && configDinamica.mostrarNombreConLogo);
+    document.querySelectorAll('[data-marca="nombre_sitio"]').forEach(el => {
+      el.style.display = (hayLogoPersonalizado && !mostrarNombreJuntoAlLogo) ? "none" : "";
+    });
   } catch (e) {
     // Silencioso a propósito: si falla, el sitio sigue viéndose bien con
     // los valores estáticos ya aplicados (logotipo de texto elegante si
@@ -304,6 +322,20 @@ const apiTelovendo = {
     const res = await fetch(BASE_URL, {
       method: "POST",
       body: JSON.stringify({ accion: "eliminarLogo" })
+    });
+    return res.json();
+  },
+
+  /**
+   * Guarda el nombre de marca personalizado (ej. "VentaGarage") y/o la
+   * preferencia de mostrarlo junto al logo.
+   * @param {Object} datos - { nombreMarca?: string, mostrarNombreConLogo?: boolean }
+   * @returns {Promise<Object>} { ok, error? }
+   */
+  async guardarNombreMarca(datos) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "guardarNombreMarca", ...datos })
     });
     return res.json();
   },
