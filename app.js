@@ -19,7 +19,21 @@ const BASE_URL = "https://script.google.com/macros/s/AKfycbxNUDeaXh3_ASjcKEDAdF7
  * No recibe parámetros. No retorna nada. Se llama una vez, al cargar cada
  * página (ver <script> al final de cada .html).
  */
-function aplicarMarca() {
+/**
+ * Aplica BRAND_CONFIG al documento actual, y luego intenta sobreescribir el
+ * logo con la configuración dinámica guardada en el backend (hoja "Config"),
+ * para poder cambiar de marca por cliente sin tocar ningún archivo de
+ * código (ver panel-admin.html, pestaña "Marca").
+ *
+ * NUEVO (v8): si no hay logo personalizado, o si la imagen del logo falla
+ * al cargar (404, URL rota), se oculta automáticamente y queda solo el
+ * nombre de marca en tipografía elegante (Fraunces) como logotipo de texto
+ * — el sitio nunca se ve con una imagen rota.
+ *
+ * No recibe parámetros. No retorna nada. Se llama una vez, al cargar cada
+ * página (ver <script> al final de cada .html).
+ */
+async function aplicarMarca() {
   const cfg = window.BRAND_CONFIG;
   if (!cfg) return;
 
@@ -36,13 +50,47 @@ function aplicarMarca() {
   document.title = cfg.meta_seo.titulo;
   document.querySelectorAll('[data-marca="nombre_sitio"]').forEach(el => el.textContent = cfg.nombre_sitio);
   document.querySelectorAll('[data-marca="eslogan"]').forEach(el => el.textContent = cfg.eslogan);
-  document.querySelectorAll('[data-marca="logo"]').forEach(el => { el.src = cfg.logo_url; el.alt = cfg.nombre_sitio; });
+
+  // NUEVO (v8): el logo (imagen) se oculta con gracia si falla al cargar,
+  // en vez de mostrar el texto alternativo roto encima del nombre de marca.
+  document.querySelectorAll('[data-marca="logo"]').forEach(el => {
+    el.src = cfg.logo_url;
+    el.alt = cfg.nombre_sitio;
+    el.onerror = () => { el.style.display = "none"; };
+  });
 
   const metaDesc = document.querySelector('meta[name="description"]');
   if (metaDesc) metaDesc.setAttribute("content", cfg.meta_seo.descripcion);
 
   const favicon = document.querySelector('link[rel="icon"]');
   if (favicon) favicon.setAttribute("href", cfg.favicon_url);
+
+  // NUEVO (v8): sobreescribir el logo con la configuración dinámica del
+  // backend, si el cliente actual ya subió uno personalizado desde el
+  // panel de administración. Si esta llamada falla (backend no disponible,
+  // sin conexión), el sitio sigue funcionando con los valores estáticos de
+  // brand.config.js ya aplicados arriba — nunca se rompe la página por esto.
+  // Se ejecuta AL FINAL para que sobreescriba, y no sea sobreescrita por,
+  // los valores estáticos de logo/favicon.
+  try {
+    const params = new URLSearchParams({ accion: "obtenerConfiguracionMarca" });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`);
+    const configDinamica = await res.json();
+    if (configDinamica && configDinamica.logoUrl) {
+      document.querySelectorAll('[data-marca="logo"]').forEach(el => {
+        el.src = configDinamica.logoUrl;
+        el.style.display = ""; // por si un logo anterior lo había ocultado
+      });
+    }
+    if (configDinamica && configDinamica.faviconUrl) {
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (favicon) favicon.setAttribute("href", configDinamica.faviconUrl);
+    }
+  } catch (e) {
+    // Silencioso a propósito: si falla, el sitio sigue viéndose bien con
+    // los valores estáticos ya aplicados (logotipo de texto elegante si
+    // tampoco hay imagen estática válida).
+  }
 }
 
 /**
@@ -222,6 +270,47 @@ const apiTelovendo = {
    */
   async obtenerReportes(opciones = {}) {
     const params = new URLSearchParams({ accion: "obtenerReportes", ...opciones });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`);
+    return res.json();
+  },
+
+  /**
+   * Sube un logo nuevo (para rebranding por cliente) y lo guarda como
+   * configuración dinámica en el backend. A partir de la próxima carga de
+   * cualquier página, aplicarMarca() lo aplica automáticamente en todo el
+   * sitio, sin tocar ningún archivo de código.
+   * @param {File} archivo
+   * @returns {Promise<Object>} { ok, url?, error? }
+   */
+  async subirLogo(archivo) {
+    const base64 = await new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onload = () => resolve(lector.result.split(",")[1]);
+      lector.onerror = () => reject(new Error("No se pudo leer el archivo."));
+      lector.readAsDataURL(archivo);
+    });
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        accion: "subirLogo", nombreArchivo: archivo.name, tipoMime: archivo.type,
+        pesoBytes: archivo.size, contenidoBase64: base64
+      })
+    });
+    return res.json();
+  },
+
+  /** Quita el logo personalizado (vuelve al logotipo de texto elegante por defecto). */
+  async eliminarLogo() {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "eliminarLogo" })
+    });
+    return res.json();
+  },
+
+  /** Trae la configuración de marca dinámica actual (logo del cliente activo, si existe). */
+  async obtenerConfiguracionMarca() {
+    const params = new URLSearchParams({ accion: "obtenerConfiguracionMarca" });
     const res = await fetch(`${BASE_URL}?${params.toString()}`);
     return res.json();
   }

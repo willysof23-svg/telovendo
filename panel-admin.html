@@ -64,6 +64,10 @@
     .bloque-reporte { margin-bottom:28px; }
     .bloque-reporte h3 { font-size:1.05rem; margin-bottom:10px; }
 
+    /* --- Mensajes de estado (pestaña Marca) --- */
+    .mensaje-error { background:#FDECEA; color:var(--color-advertencia); border:1px solid #f3c1b7; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:none; }
+    .mensaje-ok { background:#EAF6F1; color:var(--color-primario); border:1px solid #b9e0d1; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:none; }
+
     @media (max-width: 640px) {
       .tabs { overflow-x:auto; flex-wrap:nowrap; }
       table { font-size:0.8rem; }
@@ -94,6 +98,7 @@
         <div class="tab" data-tab="productos">Productos</div>
         <div class="tab" data-tab="nuevo">Publicar producto</div>
         <div class="tab" data-tab="reportes">Reportes</div>
+        <div class="tab" data-tab="marca">Marca</div>
       </div>
 
       <section id="tab-pedidos">
@@ -165,6 +170,39 @@
         <div id="contenido-reportes"><p style="color:#6b7280;">Elige qué reportes quieres ver, un periodo (o deja vacío para ver todo) y haz clic en "Generar".</p></div>
       </section>
 
+      <section id="tab-marca" class="oculto">
+        <div style="max-width:520px;">
+          <h2 style="font-size:1.15rem; margin-bottom:6px;">Logo del marketplace</h2>
+          <p style="color:#6b7280; font-size:0.9rem; margin-bottom:18px;">
+            Sube el logo de tu cliente actual (ej. "ventagarage") y se aplica automáticamente
+            en todas las páginas del sitio — inicio, catálogo, panel, etc. Sin tocar ningún
+            archivo de código. Si no subes ninguno, el sitio usa el nombre de marca en
+            tipografía elegante como logotipo de texto.
+          </p>
+
+          <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; padding:16px; background:#fff; border:1px solid var(--color-linea); border-radius:var(--radio-grande);">
+            <div id="vista-previa-logo" style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:#F1ECE0; border-radius:10px; overflow:hidden;">
+              <span style="font-size:0.75rem; color:#9a9282; text-align:center; padding:4px;">Cargando…</span>
+            </div>
+            <div>
+              <p id="estado-logo-actual" style="margin:0; font-weight:600;">Verificando logo actual…</p>
+              <p style="margin:4px 0 0; font-size:0.8rem; color:#6b7280;">Formatos: JPG, PNG, WEBP · Máximo 2 MB</p>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Subir nuevo logo</label>
+            <input type="file" id="input-logo-nuevo" accept=".jpg,.jpeg,.png,.webp" style="min-height:44px;">
+          </div>
+
+          <div id="mensaje-error-logo" class="mensaje-error"></div>
+          <div id="mensaje-ok-logo" class="mensaje-ok"></div>
+
+          <button class="boton boton--primario" id="btn-subir-logo" style="margin-top:8px;">Subir y aplicar logo</button>
+          <button class="boton boton--fantasma" id="btn-quitar-logo" style="margin-top:8px; margin-left:8px;">Quitar logo (usar texto por defecto)</button>
+        </div>
+      </section>
+
       <section id="tab-nuevo" class="oculto">
         <h2 id="titulo-form-producto" style="font-size:1.15rem; margin-bottom:14px;">Publicar producto</h2>
         <form class="form-producto" id="form-producto" style="max-width:520px;">
@@ -233,10 +271,11 @@
       tab.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
         tab.classList.add("activa");
-        ["pedidos", "productos", "nuevo", "reportes"].forEach(id =>
+        ["pedidos", "productos", "nuevo", "reportes", "marca"].forEach(id =>
           document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== tab.dataset.tab));
         if (tab.dataset.tab === "pedidos") cargarPedidos_();
         if (tab.dataset.tab === "productos") cargarProductos_();
+        if (tab.dataset.tab === "marca") cargarConfiguracionMarcaAdmin_();
       });
     });
 
@@ -417,7 +456,7 @@
 
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
       document.querySelector('.tab[data-tab="nuevo"]').classList.add("activa");
-      ["pedidos", "productos", "nuevo", "reportes"].forEach(id =>
+      ["pedidos", "productos", "nuevo", "reportes", "marca"].forEach(id =>
         document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== "nuevo"));
     }
 
@@ -727,6 +766,91 @@
       if (libro.SheetNames.length === 0) { alert("No hay reportes seleccionados para exportar."); return; }
       XLSX.writeFile(libro, `reporte_telovendo_${new Date().toISOString().slice(0,10)}.xlsx`);
     });
+
+    /* =========================================================================
+       MARCA (v8) — logo dinámico por cliente, sin tocar código
+       -------------------------------------------------------------------------
+       Reutiliza el mismo patrón de validación de archivos que ya usa
+       admin-archivos.html (formato/peso validados en cliente Y servidor,
+       nunca confiar solo en el cliente).
+       ========================================================================= */
+
+    const LIMITE_LOGO_MB = 2;
+    const FORMATOS_LOGO = ["jpg", "jpeg", "png", "webp"];
+
+    /** Carga y muestra el estado actual del logo (personalizado o por defecto). */
+    async function cargarConfiguracionMarcaAdmin_() {
+      const vista = document.getElementById("vista-previa-logo");
+      const estado = document.getElementById("estado-logo-actual");
+      try {
+        const config = await apiTelovendo.obtenerConfiguracionMarca();
+        if (config && config.logoUrl) {
+          vista.innerHTML = `<img src="${config.logoUrl}" style="max-width:100%; max-height:100%; object-fit:contain;">`;
+          estado.textContent = "Logo personalizado activo";
+        } else {
+          vista.innerHTML = `<span style="font-family:var(--fuente-display); font-weight:600; font-size:1.4rem; color:var(--color-primario);">${window.BRAND_CONFIG.nombre_sitio}</span>`;
+          estado.textContent = "Usando logotipo de texto por defecto (ningún logo subido todavía)";
+        }
+      } catch (e) {
+        estado.textContent = "No se pudo verificar el estado actual del logo.";
+      }
+    }
+
+    /** Valida el archivo de logo en el cliente antes de subir (feedback inmediato; la validación real ocurre en el servidor). */
+    function validarLogo_(archivo) {
+      const ext = archivo.name.split(".").pop().toLowerCase();
+      const pesoMb = archivo.size / (1024 * 1024);
+      if (!FORMATOS_LOGO.includes(ext)) {
+        return `Formato ".${ext}" no permitido. Usa JPG, PNG o WEBP.`;
+      }
+      if (pesoMb > LIMITE_LOGO_MB) {
+        return `El logo pesa ${pesoMb.toFixed(1)} MB y el máximo permitido es ${LIMITE_LOGO_MB} MB. Comprime la imagen y vuelve a intentarlo.`;
+      }
+      return null;
+    }
+
+    document.getElementById("btn-subir-logo").addEventListener("click", async () => {
+      const archivo = document.getElementById("input-logo-nuevo").files[0];
+      if (!archivo) { mostrarErrorLogo_("Selecciona primero un archivo de imagen."); return; }
+      const error = validarLogo_(archivo);
+      if (error) { mostrarErrorLogo_(error); return; }
+      try {
+        const res = await apiTelovendo.subirLogo(archivo);
+        if (res.ok) {
+          mostrarOkLogo_("Logo actualizado. Ya se aplicó en todo el sitio — recarga cualquier página para verlo.");
+          document.getElementById("input-logo-nuevo").value = "";
+          cargarConfiguracionMarcaAdmin_();
+        } else {
+          mostrarErrorLogo_(res.error || "No se pudo subir el logo.");
+        }
+      } catch (e) {
+        mostrarErrorLogo_("No se pudo conectar con el backend. Intenta de nuevo.");
+      }
+    });
+
+    document.getElementById("btn-quitar-logo").addEventListener("click", async () => {
+      if (!confirm("¿Quitar el logo actual? El sitio volverá a mostrar el nombre de marca en texto elegante.")) return;
+      const res = await apiTelovendo.eliminarLogo();
+      if (res.ok) {
+        mostrarOkLogo_("Logo quitado. El sitio ya usa el logotipo de texto por defecto.");
+        cargarConfiguracionMarcaAdmin_();
+      } else {
+        mostrarErrorLogo_(res.error || "No se pudo quitar el logo.");
+      }
+    });
+
+    function mostrarErrorLogo_(msg) {
+      const el = document.getElementById("mensaje-error-logo");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-ok-logo").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+    function mostrarOkLogo_(msg) {
+      const el = document.getElementById("mensaje-ok-logo");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-error-logo").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
 
     cargarPedidos_();
     cargarProductos_(true); // carga en segundo plano para tener el banner de alerta listo desde el inicio
