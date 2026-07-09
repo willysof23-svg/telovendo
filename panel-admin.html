@@ -278,6 +278,33 @@
           <div id="mensaje-error-nombre" class="mensaje-error"></div>
           <div id="mensaje-ok-nombre" class="mensaje-ok"></div>
           <button class="boton boton--primario" id="btn-guardar-nombre-marca">Guardar nombre de marca</button>
+
+          <hr style="margin:32px 0; border:none; border-top:1px solid var(--color-linea);">
+
+          <h2 style="font-size:1.15rem; margin-bottom:6px;">Textos de inicio</h2>
+          <p style="color:#6b7280; font-size:0.9rem; margin-bottom:18px;">
+            Edita el mensaje principal de la portada y los títulos de las secciones
+            "Categorías destacadas" y "Lo más vendido esta semana". Se aplican en
+            index.html sin tocar ningún archivo de código. Deja un campo vacío y
+            "Guardar" para volver al texto original.
+          </p>
+
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Mensaje del hero (debajo del título principal)</label>
+            <textarea id="input-texto-hero" rows="3" style="width:100%; max-width:460px; padding:10px 12px; border-radius:8px; border:1px solid var(--color-linea); font-family:var(--fuente-texto);"></textarea>
+          </div>
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Título de "Categorías destacadas"</label>
+            <input type="text" id="input-titulo-categorias" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; max-width:320px;">
+          </div>
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Título de "Lo más vendido esta semana"</label>
+            <input type="text" id="input-titulo-mas-vendido" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; max-width:320px;">
+          </div>
+
+          <div id="mensaje-error-textos" class="mensaje-error"></div>
+          <div id="mensaje-ok-textos" class="mensaje-ok"></div>
+          <button class="boton boton--primario" id="btn-guardar-textos-home">Guardar textos de inicio</button>
         </div>
       </section>
 
@@ -903,6 +930,16 @@
         // NUEVO (v8.1): precargar el nombre de marca y la preferencia actual
         document.getElementById("input-nombre-marca").value = (config && config.nombreMarca) || window.BRAND_CONFIG.nombre_sitio;
         document.getElementById("chk-mostrar-nombre-con-logo").checked = !!(config && config.mostrarNombreConLogo);
+
+        // NUEVO (v11): precargar los textos de inicio con el valor guardado
+        // en Config, o con el texto original de fábrica si el admin todavía
+        // no ha personalizado ninguno.
+        document.getElementById("input-texto-hero").value =
+          (config && config.textoHero) || TEXTOS_HOME_DEFECTO.textoHero;
+        document.getElementById("input-titulo-categorias").value =
+          (config && config.tituloCategoriasDestacadas) || TEXTOS_HOME_DEFECTO.tituloCategoriasDestacadas;
+        document.getElementById("input-titulo-mas-vendido").value =
+          (config && config.tituloMasVendido) || TEXTOS_HOME_DEFECTO.tituloMasVendido;
       } catch (e) {
         estado.textContent = "No se pudo verificar el estado actual del logo.";
       }
@@ -995,6 +1032,54 @@
       const el = document.getElementById("mensaje-ok-nombre");
       el.textContent = msg; el.style.display = "block";
       document.getElementById("mensaje-error-nombre").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+
+    /* =========================================================================
+       TEXTOS DE INICIO (v11) — mensaje del hero y títulos de portada,
+       editables desde el panel sin tocar código, mismo patrón que Marca.
+       ========================================================================= */
+
+    // Textos originales de fábrica (los mismos que trae index.html por
+    // defecto). Se usan para precargar el formulario cuando el admin todavía
+    // no ha guardado ninguna personalización en Config.
+    const TEXTOS_HOME_DEFECTO = {
+      textoHero: "Cada producto tiene su propio método de pago, cada compra queda registrada como un recibo, y siempre hay garantía. Compra fácil, rápido y directo conmigo.",
+      tituloCategoriasDestacadas: "Categorías destacadas",
+      tituloMasVendido: "Lo más vendido esta semana"
+    };
+
+    /**
+     * Guarda los 3 textos de inicio. Si un campo queda vacío, se envía el
+     * texto de fábrica correspondiente (Regla 0: nunca se deja un texto
+     * vacío en el sitio público).
+     */
+    document.getElementById("btn-guardar-textos-home").addEventListener("click", async () => {
+      const textoHero = document.getElementById("input-texto-hero").value.trim() || TEXTOS_HOME_DEFECTO.textoHero;
+      const tituloCategoriasDestacadas = document.getElementById("input-titulo-categorias").value.trim() || TEXTOS_HOME_DEFECTO.tituloCategoriasDestacadas;
+      const tituloMasVendido = document.getElementById("input-titulo-mas-vendido").value.trim() || TEXTOS_HOME_DEFECTO.tituloMasVendido;
+      try {
+        const res = await apiTelovendo.guardarTextosHome({ textoHero, tituloCategoriasDestacadas, tituloMasVendido });
+        if (res.ok) {
+          mostrarOkTextos_("Textos de inicio actualizados. Recarga index.html para verlos.");
+        } else {
+          mostrarErrorTextos_(res.error || "No se pudieron guardar los textos de inicio.");
+        }
+      } catch (e) {
+        mostrarErrorTextos_("No se pudo conectar con el backend. Intenta de nuevo.");
+      }
+    });
+
+    function mostrarErrorTextos_(msg) {
+      const el = document.getElementById("mensaje-error-textos");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-ok-textos").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+    function mostrarOkTextos_(msg) {
+      const el = document.getElementById("mensaje-ok-textos");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-error-textos").style.display = "none";
       setTimeout(() => el.style.display = "none", 6000);
     }
 

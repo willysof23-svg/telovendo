@@ -104,6 +104,21 @@ async function aplicarMarca() {
     document.querySelectorAll('[data-marca="nombre_sitio"]').forEach(el => {
       el.style.display = (hayLogoPersonalizado && !mostrarNombreJuntoAlLogo) ? "none" : "";
     });
+
+    // NUEVO (v11): textos editables de la portada (mensaje del hero, título
+    // de "Categorías destacadas" y título de "Lo más vendido esta semana").
+    // Si el admin no ha personalizado alguno desde el panel, no llega en
+    // configDinamica y se conserva el texto ya escrito en el HTML — la
+    // página nunca queda con un texto vacío por esto.
+    if (configDinamica && configDinamica.textoHero) {
+      document.querySelectorAll('[data-marca="texto_hero"]').forEach(el => el.textContent = configDinamica.textoHero);
+    }
+    if (configDinamica && configDinamica.tituloCategoriasDestacadas) {
+      document.querySelectorAll('[data-marca="titulo_categorias_destacadas"]').forEach(el => el.textContent = configDinamica.tituloCategoriasDestacadas);
+    }
+    if (configDinamica && configDinamica.tituloMasVendido) {
+      document.querySelectorAll('[data-marca="titulo_mas_vendido"]').forEach(el => el.textContent = configDinamica.tituloMasVendido);
+    }
   } catch (e) {
     // Silencioso a propósito: si falla, el sitio sigue viéndose bien con
     // los valores estáticos ya aplicados (logotipo de texto elegante si
@@ -441,6 +456,22 @@ const apiTelovendo = {
     const res = await fetch(BASE_URL, {
       method: "POST",
       body: JSON.stringify({ accion: "guardarEmailNotificaciones", email })
+    });
+    return res.json();
+  },
+
+  /**
+   * NUEVO (v11): guarda los textos editables de la portada (mensaje del
+   * hero, título de "Categorías destacadas" y título de "Lo más vendido
+   * esta semana"). Un solo endpoint para los 3, igual que guardarNombreMarca,
+   * porque se editan juntos desde el mismo formulario del panel (pestaña Marca).
+   * @param {Object} datos - { textoHero?, tituloCategoriasDestacadas?, tituloMasVendido? }
+   * @returns {Promise<Object>} { ok, error? }
+   */
+  async guardarTextosHome(datos) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "guardarTextosHome", ...datos })
     });
     return res.json();
   }
