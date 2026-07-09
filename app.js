@@ -360,6 +360,89 @@ const apiTelovendo = {
     const params = new URLSearchParams({ accion: "obtenerConfiguracionMarca" });
     const res = await fetch(`${BASE_URL}?${params.toString()}`);
     return res.json();
+  },
+
+  /**
+   * NUEVO (v10): envía una oferta por un producto (valor distinto al de
+   * venta). Queda registrada para que el admin la revise; no cambia nada
+   * automáticamente en el producto. Usada por producto.html.
+   * @param {Object} datosOferta - { idProducto, nombreInteresado?, contacto, valorOfertado, mensaje? }
+   * @returns {Promise<Object>} { ok, idOferta, error? }
+   */
+  async crearOferta(datosOferta) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "crearOferta", ...datosOferta })
+    });
+    return res.json();
+  },
+
+  /**
+   * NUEVO (v10): envía una pregunta/inquietud sobre un producto. El contacto
+   * es obligatorio (se valida también en servidor). Usada por producto.html.
+   * @param {Object} datosConsulta - { idProducto, nombreInteresado?, contacto, pregunta }
+   * @returns {Promise<Object>} { ok, idConsulta, error? }
+   */
+  async crearConsulta(datosConsulta) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "crearConsulta", ...datosConsulta })
+    });
+    return res.json();
+  },
+
+  /** NUEVO (v10): lista ofertas (privado, solo panel admin), con filtro opcional de estado. */
+  async listarOfertas(filtroEstado = "") {
+    const params = new URLSearchParams({ accion: "listarOfertas", estado: filtroEstado });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`);
+    return res.json();
+  },
+
+  /**
+   * NUEVO (v10): cambia el estado de una oferta. Si se acepta, el backend
+   * crea automáticamente un Pedido con el precio negociado.
+   * @param {string} idOferta
+   * @param {string} nuevoEstado - "Pendiente" | "Aceptada" | "Rechazada"
+   * @returns {Promise<Object>} { ok, idPedido?, error? }
+   */
+  async actualizarEstadoOferta(idOferta, nuevoEstado) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "actualizarEstadoOferta", idOferta, nuevoEstado })
+    });
+    return res.json();
+  },
+
+  /** NUEVO (v10): lista consultas (privado, solo panel admin), con filtro opcional de estado. */
+  async listarConsultas(filtroEstado = "") {
+    const params = new URLSearchParams({ accion: "listarConsultas", estado: filtroEstado });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`);
+    return res.json();
+  },
+
+  /**
+   * NUEVO (v10): marca una consulta como respondida (o la deja pendiente de
+   * nuevo) y opcionalmente guarda el texto de la respuesta del admin.
+   * @param {string} idConsulta
+   * @param {string} nuevoEstado - "Pendiente" | "Respondida"
+   * @param {string} [respuesta]
+   * @returns {Promise<Object>} { ok, error? }
+   */
+  async actualizarEstadoConsulta(idConsulta, nuevoEstado, respuesta) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "actualizarEstadoConsulta", idConsulta, nuevoEstado, respuesta })
+    });
+    return res.json();
+  },
+
+  /** NUEVO (v10): guarda el correo que recibe las notificaciones de ofertas/consultas nuevas. */
+  async guardarEmailNotificaciones(email) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "guardarEmailNotificaciones", email })
+    });
+    return res.json();
   }
 };
 

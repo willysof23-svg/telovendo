@@ -20,6 +20,24 @@
     #resultado-cripto { font-family: var(--fuente-datos); color: var(--color-primario); margin-top:8px; min-height:1.2em; }
     .sticky-movil { position:sticky; bottom:0; background:#fff; padding:12px 0; border-top:1px solid var(--color-linea); }
     @media (min-width:900px){ .sticky-movil { position:static; border:none; padding:0; } }
+
+    /* NUEVO (v10): oferta y preguntas/inquietudes */
+    .oculto { display:none !important; }
+    .bloque-oferta { margin-top:14px; }
+    .bloque-consulta { margin-top:28px; padding-top:20px; border-top:1px solid var(--color-linea); }
+    .bloque-consulta h3 { font-size:1.1rem; margin-bottom:6px; }
+    .bloque-consulta__ayuda { color:#6b7280; font-size:0.85rem; margin-bottom:14px; }
+    .mini-form { max-width:420px; margin-top:12px; }
+    .mini-form .campo { margin-bottom:12px; }
+    .mini-form label { display:block; font-weight:600; margin-bottom:4px; font-size:0.88rem; }
+    .mini-form input, .mini-form textarea {
+      width:100%; min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid var(--color-linea);
+      font-family: var(--fuente-texto); box-sizing:border-box;
+    }
+    .mini-form textarea { min-height:80px; resize:vertical; }
+    .mini-form small { display:block; color:#6b7280; font-size:0.78rem; margin-top:-6px; margin-bottom:10px; }
+    .mensaje-form-ok { color:var(--color-primario); font-weight:600; font-size:0.88rem; margin-top:10px; }
+    .mensaje-form-error { color:var(--color-advertencia); font-weight:600; font-size:0.88rem; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -84,6 +102,40 @@
                 ${p.agotado ? 'Agotado' : 'Comprar ahora'}
               </button>
             </div>
+
+            <!-- NUEVO (v10): hacer una oferta. Convive con "Comprar ahora": no lo reemplaza, es una alternativa para quien quiere negociar el precio. -->
+            <div class="bloque-oferta">
+              <button type="button" class="boton boton--fantasma" id="btn-toggle-oferta" style="width:100%;">💬 Hacer una oferta por este producto</button>
+              <form id="form-oferta" class="mini-form oculto">
+                <div class="campo"><label for="oferta-nombre">Tu nombre</label><input type="text" id="oferta-nombre" placeholder="Opcional"></div>
+                <div class="campo"><label for="oferta-valor">Valor que ofreces</label><input type="number" id="oferta-valor" min="1" required></div>
+                <div class="campo">
+                  <label for="oferta-contacto">Contacto</label>
+                  <input type="text" id="oferta-contacto" placeholder="WhatsApp o correo" required>
+                  <small>Obligatorio: así te podemos responder la oferta.</small>
+                </div>
+                <div class="campo"><label for="oferta-mensaje">Mensaje (opcional)</label><textarea id="oferta-mensaje" rows="2"></textarea></div>
+                <button type="submit" class="boton boton--primario" style="width:100%;">Enviar oferta</button>
+                <p id="oferta-mensaje-resultado"></p>
+              </form>
+            </div>
+
+            <!-- NUEVO (v10): preguntas e inquietudes. Contacto siempre obligatorio (regla de negocio explícita). -->
+            <div class="bloque-consulta">
+              <h3>Preguntas e inquietudes</h3>
+              <p class="bloque-consulta__ayuda">¿Tienes dudas sobre este producto? Escríbenos y te respondemos directamente por tu contacto.</p>
+              <form id="form-consulta" class="mini-form">
+                <div class="campo"><label for="consulta-nombre">Tu nombre</label><input type="text" id="consulta-nombre" placeholder="Opcional"></div>
+                <div class="campo"><label for="consulta-pregunta">Tu pregunta</label><textarea id="consulta-pregunta" rows="3" required></textarea></div>
+                <div class="campo">
+                  <label for="consulta-contacto">Contacto</label>
+                  <input type="text" id="consulta-contacto" placeholder="WhatsApp o correo" required>
+                  <small>Obligatorio: sin un contacto no podemos responderte.</small>
+                </div>
+                <button type="submit" class="boton boton--primario" style="width:100%;">Enviar pregunta</button>
+                <p id="consulta-mensaje-resultado"></p>
+              </form>
+            </div>
           </div>
         `;
 
@@ -104,9 +156,117 @@
           if (p.agotado) return;
           window.location.href = `carrito.html?id=${idProducto}`;
         });
+
+        // NUEVO (v10): oferta y preguntas — se conectan aquí porque el HTML
+        // recién se insertó arriba (innerHTML) y los elementos ya existen en el DOM.
+        inicializarFormularioOferta_(p);
+        inicializarFormularioConsulta_(p);
       } catch (err) {
         cont.innerHTML = "<p style='color:#6b7280;'>No se pudo cargar el producto (¿backend desplegado?).</p>";
       }
+    }
+
+    /**
+     * NUEVO (v10): conecta el botón "Hacer una oferta" (muestra/oculta el
+     * mini-formulario) y su envío al backend (accion=crearOferta). Nunca
+     * modifica el precio ni el stock del producto — solo queda registrada
+     * para que el admin la revise desde el panel.
+     * @param {Object} producto - producto ya cargado (para el idProducto)
+     */
+    function inicializarFormularioOferta_(producto) {
+      const btnToggle = document.getElementById("btn-toggle-oferta");
+      const form = document.getElementById("form-oferta");
+      btnToggle.addEventListener("click", () => form.classList.toggle("oculto"));
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const resultado = document.getElementById("oferta-mensaje-resultado");
+        const valor = Number(document.getElementById("oferta-valor").value);
+        const contacto = document.getElementById("oferta-contacto").value.trim();
+
+        if (!valor || valor <= 0) {
+          resultado.className = "mensaje-form-error";
+          resultado.textContent = "Escribe un valor válido para tu oferta.";
+          return;
+        }
+        if (!contacto) {
+          resultado.className = "mensaje-form-error";
+          resultado.textContent = "El contacto es obligatorio para poder responderte.";
+          return;
+        }
+
+        resultado.className = "";
+        resultado.textContent = "Enviando…";
+        try {
+          const res = await apiTelovendo.crearOferta({
+            idProducto,
+            nombreInteresado: document.getElementById("oferta-nombre").value.trim(),
+            valorOfertado: valor,
+            contacto,
+            mensaje: document.getElementById("oferta-mensaje").value.trim()
+          });
+          if (res.ok) {
+            resultado.className = "mensaje-form-ok";
+            resultado.textContent = "¡Oferta enviada! Te contactaremos pronto por el contacto que dejaste.";
+            form.reset();
+          } else {
+            resultado.className = "mensaje-form-error";
+            resultado.textContent = res.error || "No se pudo enviar la oferta.";
+          }
+        } catch (err) {
+          resultado.className = "mensaje-form-error";
+          resultado.textContent = "No se pudo conectar con el backend. Intenta de nuevo.";
+        }
+      });
+    }
+
+    /**
+     * NUEVO (v10): conecta el formulario de "Preguntas e inquietudes". El
+     * contacto es SIEMPRE obligatorio (regla de negocio explícita) — se
+     * valida aquí Y en el servidor (nunca confiar solo en el cliente).
+     * @param {Object} producto - producto ya cargado (para el idProducto)
+     */
+    function inicializarFormularioConsulta_(producto) {
+      const form = document.getElementById("form-consulta");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const resultado = document.getElementById("consulta-mensaje-resultado");
+        const pregunta = document.getElementById("consulta-pregunta").value.trim();
+        const contacto = document.getElementById("consulta-contacto").value.trim();
+
+        if (!pregunta) {
+          resultado.className = "mensaje-form-error";
+          resultado.textContent = "Escribe tu pregunta.";
+          return;
+        }
+        if (!contacto) {
+          resultado.className = "mensaje-form-error";
+          resultado.textContent = "El contacto es obligatorio: sin él no podemos responderte.";
+          return;
+        }
+
+        resultado.className = "";
+        resultado.textContent = "Enviando…";
+        try {
+          const res = await apiTelovendo.crearConsulta({
+            idProducto,
+            nombreInteresado: document.getElementById("consulta-nombre").value.trim(),
+            pregunta,
+            contacto
+          });
+          if (res.ok) {
+            resultado.className = "mensaje-form-ok";
+            resultado.textContent = "¡Pregunta enviada! Te responderemos por el contacto que dejaste.";
+            form.reset();
+          } else {
+            resultado.className = "mensaje-form-error";
+            resultado.textContent = res.error || "No se pudo enviar la pregunta.";
+          }
+        } catch (err) {
+          resultado.className = "mensaje-form-error";
+          resultado.textContent = "No se pudo conectar con el backend. Intenta de nuevo.";
+        }
+      });
     }
 
     function cambiarImagen_(el, url) {

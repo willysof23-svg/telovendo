@@ -97,6 +97,7 @@
         <div class="tab activa" data-tab="pedidos">Pedidos</div>
         <div class="tab" data-tab="productos">Productos</div>
         <div class="tab" data-tab="nuevo">Publicar producto</div>
+        <div class="tab" data-tab="ofertas">Ofertas y consultas</div>
         <div class="tab" data-tab="reportes">Reportes</div>
         <div class="tab" data-tab="marca">Marca</div>
       </div>
@@ -134,6 +135,63 @@
             <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Métodos</th><th>Estado</th><th></th></tr></thead>
             <tbody id="tabla-productos"><tr><td colspan="7">Cargando…</td></tr></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- NUEVO (v10): Ofertas y Consultas — siempre privadas, solo visibles aquí. -->
+      <section id="tab-ofertas" class="oculto">
+        <p style="color:#6b7280; margin-bottom:16px;">
+          Ofertas y preguntas que dejaron los interesados en tus productos. Nunca se muestran en el sitio público.
+          Al aceptar una oferta se crea un pedido automáticamente con el precio negociado.
+        </p>
+
+        <div style="max-width:480px; background:#fff; border:1px solid var(--color-linea); border-radius:var(--radio-grande); padding:16px 18px; margin-bottom:24px;">
+          <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem;">Correo para recibir notificaciones de ofertas y consultas nuevas</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="email" id="input-email-notificaciones" placeholder="tucorreo@gmail.com" style="flex:1; min-width:200px; min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea);">
+            <button class="boton boton--fantasma" id="btn-guardar-email-notificaciones">Guardar</button>
+          </div>
+          <p id="mensaje-email-notificaciones" style="font-size:0.82rem; margin:8px 0 0;"></p>
+        </div>
+
+        <div class="tabs" style="border-bottom:none; margin-bottom:14px;">
+          <div class="tab activa" data-subtab-ofertas="ofertas" style="border-bottom:2px solid var(--color-primario); color:var(--color-primario);">Ofertas</div>
+          <div class="tab" data-subtab-ofertas="consultas">Consultas</div>
+        </div>
+
+        <div id="subtab-ofertas">
+          <div class="barra-filtros">
+            <label style="font-weight:600; font-size:0.9rem;">Filtrar por estado:</label>
+            <select id="filtro-estado-ofertas">
+              <option value="">Todas</option>
+              <option>Pendiente</option>
+              <option>Aceptada</option>
+              <option>Rechazada</option>
+            </select>
+          </div>
+          <div class="tabla-scroll">
+            <table>
+              <thead><tr><th>Producto</th><th>Interesado</th><th>Contacto</th><th>Ofrece</th><th>Mensaje</th><th>Estado</th></tr></thead>
+              <tbody id="tabla-ofertas"><tr><td colspan="6">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="subtab-consultas" class="oculto">
+          <div class="barra-filtros">
+            <label style="font-weight:600; font-size:0.9rem;">Filtrar por estado:</label>
+            <select id="filtro-estado-consultas">
+              <option value="">Todas</option>
+              <option>Pendiente</option>
+              <option>Respondida</option>
+            </select>
+          </div>
+          <div class="tabla-scroll">
+            <table>
+              <thead><tr><th>Producto</th><th>Interesado</th><th>Contacto</th><th>Pregunta</th><th>Respuesta</th><th>Estado</th></tr></thead>
+              <tbody id="tabla-consultas"><tr><td colspan="6">Cargando…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -291,11 +349,28 @@
       tab.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
         tab.classList.add("activa");
-        ["pedidos", "productos", "nuevo", "reportes", "marca"].forEach(id =>
+        ["pedidos", "productos", "nuevo", "ofertas", "reportes", "marca"].forEach(id =>
           document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== tab.dataset.tab));
         if (tab.dataset.tab === "pedidos") cargarPedidos_();
         if (tab.dataset.tab === "productos") cargarProductos_();
         if (tab.dataset.tab === "marca") cargarConfiguracionMarcaAdmin_();
+        if (tab.dataset.tab === "ofertas") { cargarOfertas_(); cargarConsultas_(); cargarEmailNotificacionesAdmin_(); }
+      });
+    });
+
+    // NUEVO (v10): sub-pestañas dentro de "Ofertas y consultas" (Ofertas / Consultas)
+    document.querySelectorAll("[data-subtab-ofertas]").forEach(sub => {
+      sub.addEventListener("click", () => {
+        document.querySelectorAll("[data-subtab-ofertas]").forEach(s => {
+          s.classList.remove("activa");
+          s.style.borderBottom = "2px solid transparent";
+          s.style.color = "";
+        });
+        sub.classList.add("activa");
+        sub.style.borderBottom = "2px solid var(--color-primario)";
+        sub.style.color = "var(--color-primario)";
+        document.getElementById("subtab-ofertas").classList.toggle("oculto", sub.dataset.subtabOfertas !== "ofertas");
+        document.getElementById("subtab-consultas").classList.toggle("oculto", sub.dataset.subtabOfertas !== "consultas");
       });
     });
 
@@ -477,7 +552,7 @@
 
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
       document.querySelector('.tab[data-tab="nuevo"]').classList.add("activa");
-      ["pedidos", "productos", "nuevo", "reportes", "marca"].forEach(id =>
+      ["pedidos", "productos", "nuevo", "ofertas", "reportes", "marca"].forEach(id =>
         document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== "nuevo"));
     }
 
@@ -922,6 +997,123 @@
       document.getElementById("mensaje-error-nombre").style.display = "none";
       setTimeout(() => el.style.display = "none", 6000);
     }
+
+    /* =========================================================================
+       OFERTAS Y CONSULTAS (v10)
+       -------------------------------------------------------------------------
+       Siempre privadas (nunca se muestran en el catálogo público). Al aceptar
+       una oferta, el backend crea el Pedido automáticamente — este panel solo
+       refleja el resultado (idPedido) en un mensaje de confirmación.
+       ========================================================================= */
+
+    /** Carga la tabla de ofertas con el filtro de estado seleccionado. */
+    async function cargarOfertas_() {
+      const tbody = document.getElementById("tabla-ofertas");
+      const estadoFiltro = document.getElementById("filtro-estado-ofertas").value;
+      tbody.innerHTML = "<tr><td colspan='6'>Cargando…</td></tr>";
+      try {
+        const ofertas = await apiTelovendo.listarOfertas(estadoFiltro);
+        if (!ofertas.length) { tbody.innerHTML = "<tr><td colspan='6'>No hay ofertas con ese filtro.</td></tr>"; return; }
+        tbody.innerHTML = ofertas.map(o => `
+          <tr>
+            <td>${o.nombreProducto}</td>
+            <td>${o.nombreInteresado}</td>
+            <td>${o.contacto}</td>
+            <td class="precio">${formatearPrecio(o.valorOfertado)}</td>
+            <td style="max-width:220px; white-space:normal;">${o.mensaje || '—'}</td>
+            <td>
+              <select class="estado-select" onchange="cambiarEstadoOferta_('${o.idOferta}', this.value)">
+                ${["Pendiente", "Aceptada", "Rechazada"].map(e => `<option ${e === o.estado ? 'selected' : ''}>${e}</option>`).join('')}
+              </select>
+            </td>
+          </tr>`).join("");
+      } catch (e) {
+        tbody.innerHTML = "<tr><td colspan='6'>No se pudo conectar con el backend.</td></tr>";
+      }
+    }
+    document.getElementById("filtro-estado-ofertas").addEventListener("change", cargarOfertas_);
+
+    /**
+     * Cambia el estado de una oferta. Si queda "Aceptada", el backend crea el
+     * pedido automáticamente y lo informa aquí con su ID.
+     */
+    async function cambiarEstadoOferta_(idOferta, nuevoEstado) {
+      const res = await apiTelovendo.actualizarEstadoOferta(idOferta, nuevoEstado);
+      if (!res.ok) { alert(res.error || "No se pudo actualizar la oferta."); return; }
+      if (res.idPedido) {
+        alert(`Oferta aceptada. Se creó el pedido ${res.idPedido} automáticamente (revísalo en la pestaña "Pedidos").`);
+      }
+      cargarOfertas_();
+    }
+
+    /** Carga la tabla de consultas con el filtro de estado seleccionado. */
+    async function cargarConsultas_() {
+      const tbody = document.getElementById("tabla-consultas");
+      const estadoFiltro = document.getElementById("filtro-estado-consultas").value;
+      tbody.innerHTML = "<tr><td colspan='6'>Cargando…</td></tr>";
+      try {
+        const consultas = await apiTelovendo.listarConsultas(estadoFiltro);
+        if (!consultas.length) { tbody.innerHTML = "<tr><td colspan='6'>No hay consultas con ese filtro.</td></tr>"; return; }
+        tbody.innerHTML = consultas.map(c => `
+          <tr>
+            <td>${c.nombreProducto}</td>
+            <td>${c.nombreInteresado}</td>
+            <td>${c.contacto}</td>
+            <td style="max-width:220px; white-space:normal;">${c.pregunta}</td>
+            <td style="max-width:220px;">
+              <textarea class="respuesta-consulta" data-id="${c.idConsulta}" rows="2" style="width:100%; min-height:44px; padding:6px; border-radius:6px; border:1px solid var(--color-linea);" placeholder="Escribe tu respuesta…">${c.respuesta || ''}</textarea>
+              <button class="boton boton--fantasma" style="padding:4px 8px; font-size:0.75rem; min-height:30px; margin-top:4px;" onclick="guardarRespuestaConsulta_('${c.idConsulta}')">Guardar respuesta</button>
+            </td>
+            <td>
+              <select class="estado-select" onchange="cambiarEstadoConsulta_('${c.idConsulta}', this.value)">
+                ${["Pendiente", "Respondida"].map(e => `<option ${e === c.estado ? 'selected' : ''}>${e}</option>`).join('')}
+              </select>
+            </td>
+          </tr>`).join("");
+      } catch (e) {
+        tbody.innerHTML = "<tr><td colspan='6'>No se pudo conectar con el backend.</td></tr>";
+      }
+    }
+    document.getElementById("filtro-estado-consultas").addEventListener("change", cargarConsultas_);
+
+    /** Cambia solo el estado de una consulta (sin tocar el texto de respuesta). */
+    async function cambiarEstadoConsulta_(idConsulta, nuevoEstado) {
+      const res = await apiTelovendo.actualizarEstadoConsulta(idConsulta, nuevoEstado, undefined);
+      if (!res.ok) { alert(res.error || "No se pudo actualizar la consulta."); return; }
+      cargarConsultas_();
+    }
+
+    /** Guarda el texto de respuesta escrito en el textarea y marca la consulta como "Respondida". */
+    async function guardarRespuestaConsulta_(idConsulta) {
+      const textarea = document.querySelector(`.respuesta-consulta[data-id="${idConsulta}"]`);
+      const respuesta = textarea ? textarea.value.trim() : "";
+      if (!respuesta) { alert("Escribe una respuesta antes de guardar."); return; }
+      const res = await apiTelovendo.actualizarEstadoConsulta(idConsulta, "Respondida", respuesta);
+      if (!res.ok) { alert(res.error || "No se pudo guardar la respuesta."); return; }
+      cargarConsultas_();
+    }
+
+    /** Carga el correo de notificaciones actual (o el de respaldo) en el campo de configuración. */
+    async function cargarEmailNotificacionesAdmin_() {
+      try {
+        const config = await apiTelovendo.obtenerConfiguracionMarca();
+        document.getElementById("input-email-notificaciones").value = (config && config.emailNotificaciones) || "";
+      } catch (e) { /* si falla, el campo queda vacío y el admin puede escribirlo igual */ }
+    }
+
+    document.getElementById("btn-guardar-email-notificaciones").addEventListener("click", async () => {
+      const email = document.getElementById("input-email-notificaciones").value.trim();
+      const msg = document.getElementById("mensaje-email-notificaciones");
+      const res = await apiTelovendo.guardarEmailNotificaciones(email);
+      if (res.ok) {
+        msg.style.color = "var(--color-primario)";
+        msg.textContent = "Correo de notificaciones actualizado.";
+      } else {
+        msg.style.color = "var(--color-advertencia)";
+        msg.textContent = res.error || "No se pudo guardar el correo.";
+      }
+      setTimeout(() => msg.textContent = "", 5000);
+    });
 
     cargarPedidos_();
     cargarProductos_(true); // carga en segundo plano para tener el banner de alerta listo desde el inicio
