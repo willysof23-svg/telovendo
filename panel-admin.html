@@ -68,6 +68,16 @@
     .mensaje-error { background:#FDECEA; color:var(--color-advertencia); border:1px solid #f3c1b7; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:none; }
     .mensaje-ok { background:#EAF6F1; color:var(--color-primario); border:1px solid #b9e0d1; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:none; }
 
+    /* Overlay de acceso (v12) — cubre TODO el panel hasta verificar la clave. */
+    .overlay-acceso {
+      position:fixed; inset:0; z-index:999; background:var(--color-fondo);
+      display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    .overlay-acceso__caja {
+      background:#fff; border:1px solid var(--color-linea); border-radius:var(--radio-grande);
+      padding:32px 28px; width:100%; max-width:360px; box-shadow:0 8px 30px rgba(20,25,43,0.08);
+    }
+
     @media (max-width: 640px) {
       .tabs { overflow-x:auto; flex-wrap:nowrap; }
       table { font-size:0.8rem; }
@@ -76,6 +86,43 @@
   </style>
 </head>
 <body>
+  <!--
+    OVERLAY DE ACCESO (v12) — protege todo el panel con una clave compartida.
+    Cubre la pantalla completa hasta que apiTelovendo.verificarClaveAdmin()
+    confirme la clave. Ver <script> al final: inicializarAccesoAdmin_().
+    Dos formularios posibles dentro del mismo overlay:
+      - #form-acceso-ingresar: caso normal (ya existe una clave configurada).
+      - #form-acceso-primera-vez: solo aparece si la hoja "Config" todavía
+        no tiene ninguna clave guardada (primer uso del panel).
+  -->
+  <div id="overlay-acceso-admin" class="overlay-acceso">
+    <div class="overlay-acceso__caja">
+      <div class="encabezado__logo" style="justify-content:center; margin-bottom:18px;">
+        <img data-marca="logo" src="assets/logo-default.svg" alt="Logo" style="height:36px;">
+        <span data-marca="nombre_sitio" style="font-size:1.2rem;">TELOVENDO</span>
+      </div>
+
+      <form id="form-acceso-ingresar">
+        <h2 style="font-size:1.1rem; margin-bottom:6px;">Acceso al panel</h2>
+        <p style="color:#6b7280; font-size:0.88rem; margin-bottom:16px;">Ingresa la clave de administración para continuar.</p>
+        <input type="password" id="input-clave-acceso" placeholder="Clave de acceso" autocomplete="current-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; margin-bottom:12px;">
+        <div id="mensaje-error-acceso" class="mensaje-error"></div>
+        <button type="submit" class="boton boton--primario" style="width:100%;">Entrar</button>
+      </form>
+
+      <form id="form-acceso-primera-vez" class="oculto">
+        <h2 style="font-size:1.1rem; margin-bottom:6px;">Configura la clave del panel</h2>
+        <p style="color:#6b7280; font-size:0.88rem; margin-bottom:16px;">
+          Todavía no hay una clave configurada. Crea una — la podrás cambiar después desde la pestaña "Seguridad", y cualquier persona con la clave vigente también podrá cambiarla.
+        </p>
+        <input type="password" id="input-clave-nueva-primera-vez" placeholder="Nueva clave (mínimo 4 caracteres)" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; margin-bottom:10px;">
+        <input type="password" id="input-clave-confirmar-primera-vez" placeholder="Confirma la clave" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; margin-bottom:12px;">
+        <div id="mensaje-error-primera-vez" class="mensaje-error"></div>
+        <button type="submit" class="boton boton--primario" style="width:100%;">Crear clave y entrar</button>
+      </form>
+    </div>
+  </div>
+
   <header class="encabezado">
     <div class="contenedor encabezado__barra">
       <div class="encabezado__logo">
@@ -100,6 +147,7 @@
         <div class="tab" data-tab="ofertas">Ofertas y consultas</div>
         <div class="tab" data-tab="reportes">Reportes</div>
         <div class="tab" data-tab="marca">Marca</div>
+        <div class="tab" data-tab="seguridad">Seguridad</div>
       </div>
 
       <section id="tab-pedidos">
@@ -308,6 +356,35 @@
         </div>
       </section>
 
+      <section id="tab-seguridad" class="oculto">
+        <div style="max-width:420px;">
+          <h2 style="font-size:1.15rem; margin-bottom:6px;">Clave de acceso al panel</h2>
+          <p style="color:#6b7280; font-size:0.9rem; margin-bottom:18px;">
+            Esta es la clave que le compartes a cualquier persona a la que le des acceso
+            operativo al panel (gestionar productos y pedidos). Cámbiala cuando quieras;
+            quien conozca la clave actual puede definir una nueva. Esto <strong>no</strong>
+            afecta quién puede modificar el código o publicar cambios en la aplicación —
+            eso depende únicamente de quién tiene acceso a las cuentas de GitHub y Google
+            Apps Script del proyecto.
+          </p>
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Clave actual</label>
+            <input type="password" id="input-clave-actual-seguridad" autocomplete="current-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+          </div>
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Clave nueva</label>
+            <input type="password" id="input-clave-nueva-seguridad" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+          </div>
+          <div class="campo">
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Confirmar clave nueva</label>
+            <input type="password" id="input-clave-confirmar-seguridad" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+          </div>
+          <div id="mensaje-error-seguridad" class="mensaje-error"></div>
+          <div id="mensaje-ok-seguridad" class="mensaje-ok"></div>
+          <button class="boton boton--primario" id="btn-cambiar-clave-seguridad">Cambiar clave</button>
+        </div>
+      </section>
+
       <section id="tab-nuevo" class="oculto">
         <h2 id="titulo-form-producto" style="font-size:1.15rem; margin-bottom:14px;">Publicar producto</h2>
         <form class="form-producto" id="form-producto" style="max-width:520px;">
@@ -376,7 +453,7 @@
       tab.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
         tab.classList.add("activa");
-        ["pedidos", "productos", "nuevo", "ofertas", "reportes", "marca"].forEach(id =>
+        ["pedidos", "productos", "nuevo", "ofertas", "reportes", "marca", "seguridad"].forEach(id =>
           document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== tab.dataset.tab));
         if (tab.dataset.tab === "pedidos") cargarPedidos_();
         if (tab.dataset.tab === "productos") cargarProductos_();
@@ -579,7 +656,7 @@
 
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("activa"));
       document.querySelector('.tab[data-tab="nuevo"]').classList.add("activa");
-      ["pedidos", "productos", "nuevo", "ofertas", "reportes", "marca"].forEach(id =>
+      ["pedidos", "productos", "nuevo", "ofertas", "reportes", "marca", "seguridad"].forEach(id =>
         document.getElementById(`tab-${id}`).classList.toggle("oculto", id !== "nuevo"));
     }
 
@@ -1200,6 +1277,124 @@
       setTimeout(() => msg.textContent = "", 5000);
     });
 
+    /* =========================================================================
+       SEGURIDAD (v12) — clave de acceso al panel, compartida y parametrizable
+       -------------------------------------------------------------------------
+       1) Overlay de acceso: bloquea toda la pantalla hasta que el backend
+          confirme la clave (o, en el primer uso, hasta que se cree una).
+          La sesión se recuerda en ESTE navegador (localStorage) para no
+          pedir la clave cada vez — cualquiera puede cerrarla borrando el
+          localStorage del navegador o usando "Cambiar clave" (ver abajo).
+       2) Pestaña "Seguridad": permite cambiar la clave en cualquier momento,
+          exigiendo la clave actual correcta (Regla: solo quien la conoce
+          puede reemplazarla).
+       ========================================================================= */
+
+    const CLAVE_SESION_LOCALSTORAGE = "telovendo_admin_sesion_ok";
+
+    /** Punto de entrada: decide si mostrar el overlay o el panel directamente. */
+    function inicializarAccesoAdmin_() {
+      if (localStorage.getItem(CLAVE_SESION_LOCALSTORAGE) === "1") {
+        ocultarOverlayAcceso_();
+      }
+      // Si no hay sesión recordada, el overlay ya está visible por defecto (HTML).
+      // No sabemos todavía si es primer uso o no: se resuelve al intentar entrar.
+    }
+
+    function ocultarOverlayAcceso_() {
+      document.getElementById("overlay-acceso-admin").classList.add("oculto");
+    }
+
+    /** Envío del formulario normal de acceso (ya existe una clave configurada). */
+    document.getElementById("form-acceso-ingresar").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const clave = document.getElementById("input-clave-acceso").value;
+      const errorEl = document.getElementById("mensaje-error-acceso");
+      errorEl.style.display = "none";
+      try {
+        const res = await apiTelovendo.verificarClaveAdmin(clave);
+        if (res.sinConfigurar) {
+          // Todavía no hay clave guardada: cambia al formulario de primer uso.
+          document.getElementById("form-acceso-ingresar").classList.add("oculto");
+          document.getElementById("form-acceso-primera-vez").classList.remove("oculto");
+          return;
+        }
+        if (res.ok) {
+          localStorage.setItem(CLAVE_SESION_LOCALSTORAGE, "1");
+          ocultarOverlayAcceso_();
+        } else {
+          errorEl.textContent = res.error || "Clave incorrecta.";
+          errorEl.style.display = "block";
+        }
+      } catch (e) {
+        errorEl.textContent = "No se pudo conectar con el backend. Intenta de nuevo.";
+        errorEl.style.display = "block";
+      }
+    });
+
+    /** Envío del formulario de primer uso (crea la clave inicial). */
+    document.getElementById("form-acceso-primera-vez").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const nueva = document.getElementById("input-clave-nueva-primera-vez").value;
+      const confirmar = document.getElementById("input-clave-confirmar-primera-vez").value;
+      const errorEl = document.getElementById("mensaje-error-primera-vez");
+      errorEl.style.display = "none";
+      if (nueva !== confirmar) {
+        errorEl.textContent = "Las dos claves no coinciden.";
+        errorEl.style.display = "block";
+        return;
+      }
+      try {
+        const res = await apiTelovendo.cambiarClaveAdmin("", nueva);
+        if (res.ok) {
+          localStorage.setItem(CLAVE_SESION_LOCALSTORAGE, "1");
+          ocultarOverlayAcceso_();
+        } else {
+          errorEl.textContent = res.error || "No se pudo crear la clave.";
+          errorEl.style.display = "block";
+        }
+      } catch (e) {
+        errorEl.textContent = "No se pudo conectar con el backend. Intenta de nuevo.";
+        errorEl.style.display = "block";
+      }
+    });
+
+    /** Pestaña "Seguridad": cambiar la clave en cualquier momento. */
+    document.getElementById("btn-cambiar-clave-seguridad").addEventListener("click", async () => {
+      const actual = document.getElementById("input-clave-actual-seguridad").value;
+      const nueva = document.getElementById("input-clave-nueva-seguridad").value;
+      const confirmar = document.getElementById("input-clave-confirmar-seguridad").value;
+      if (nueva !== confirmar) { mostrarErrorSeguridad_("Las dos claves nuevas no coinciden."); return; }
+      if (nueva.length < 4) { mostrarErrorSeguridad_("La clave nueva debe tener al menos 4 caracteres."); return; }
+      try {
+        const res = await apiTelovendo.cambiarClaveAdmin(actual, nueva);
+        if (res.ok) {
+          mostrarOkSeguridad_("Clave actualizada. Compártela con quien deba tener acceso al panel.");
+          document.getElementById("input-clave-actual-seguridad").value = "";
+          document.getElementById("input-clave-nueva-seguridad").value = "";
+          document.getElementById("input-clave-confirmar-seguridad").value = "";
+        } else {
+          mostrarErrorSeguridad_(res.error || "No se pudo cambiar la clave.");
+        }
+      } catch (e) {
+        mostrarErrorSeguridad_("No se pudo conectar con el backend. Intenta de nuevo.");
+      }
+    });
+
+    function mostrarErrorSeguridad_(msg) {
+      const el = document.getElementById("mensaje-error-seguridad");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-ok-seguridad").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+    function mostrarOkSeguridad_(msg) {
+      const el = document.getElementById("mensaje-ok-seguridad");
+      el.textContent = msg; el.style.display = "block";
+      document.getElementById("mensaje-error-seguridad").style.display = "none";
+      setTimeout(() => el.style.display = "none", 6000);
+    }
+
+    inicializarAccesoAdmin_();
     cargarPedidos_();
     cargarProductos_(true); // carga en segundo plano para tener el banner de alerta listo desde el inicio
   </script>
