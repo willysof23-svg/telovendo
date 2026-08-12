@@ -474,6 +474,33 @@ const apiTelovendo = {
       body: JSON.stringify({ accion: "guardarTextosHome", ...datos })
     });
     return res.json();
+  },
+
+  /**
+   * NUEVO (v12): verifica la clave de acceso al panel de administración.
+   * @param {string} clave - texto plano ingresado por el usuario
+   * @returns {Promise<Object>} { ok, sinConfigurar? } — sinConfigurar:true
+   *   significa que todavía no existe ninguna clave guardada (primer uso).
+   */
+  async verificarClaveAdmin(clave) {
+    const params = new URLSearchParams({ accion: "verificarClaveAdmin", clave });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`);
+    return res.json();
+  },
+
+  /**
+   * NUEVO (v12): cambia la clave de acceso al panel. En el primer uso,
+   * claveActual puede ir vacía ("") — ver cambiarClaveAdmin_() en Code.gs.
+   * @param {string} claveActual
+   * @param {string} claveNueva
+   * @returns {Promise<Object>} { ok, error? }
+   */
+  async cambiarClaveAdmin(claveActual, claveNueva) {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify({ accion: "cambiarClaveAdmin", claveActual, claveNueva })
+    });
+    return res.json();
   }
 };
 
