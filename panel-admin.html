@@ -78,6 +78,18 @@
       padding:32px 28px; width:100%; max-width:360px; box-shadow:0 8px 30px rgba(20,25,43,0.08);
     }
 
+    /* Botón "ojito" (v13) — mostrar/ocultar clave en los 6 campos de contraseña.
+       .campo-clave envuelve el <input> para poder ubicar el botón encima, a la
+       derecha, sin alterar el layout ya existente de cada formulario. */
+    .campo-clave { position:relative; }
+    .btn-mostrar-clave {
+      position:absolute; top:0; right:0; bottom:0; width:44px;
+      display:flex; align-items:center; justify-content:center;
+      background:none; border:none; padding:0; cursor:pointer;
+      color:var(--color-texto); opacity:0.5; transition:opacity var(--transicion), color var(--transicion);
+    }
+    .btn-mostrar-clave:hover, .btn-mostrar-clave:focus-visible { opacity:1; color:var(--color-primario); }
+
     @media (max-width: 640px) {
       .tabs { overflow-x:auto; flex-wrap:nowrap; }
       table { font-size:0.8rem; }
@@ -105,7 +117,10 @@
       <form id="form-acceso-ingresar">
         <h2 style="font-size:1.1rem; margin-bottom:6px;">Acceso al panel</h2>
         <p style="color:#6b7280; font-size:0.88rem; margin-bottom:16px;">Ingresa la clave de administración para continuar.</p>
-        <input type="password" id="input-clave-acceso" placeholder="Clave de acceso" autocomplete="current-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; margin-bottom:12px;">
+        <div class="campo-clave" style="margin-bottom:12px;">
+          <input type="password" id="input-clave-acceso" placeholder="Clave de acceso" autocomplete="current-password" style="min-height:44px; padding:0 44px 0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+          <button type="button" class="btn-mostrar-clave" data-objetivo="input-clave-acceso" aria-label="Mostrar clave" aria-pressed="false"></button>
+        </div>
         <div id="mensaje-error-acceso" class="mensaje-error"></div>
         <button type="submit" class="boton boton--primario" style="width:100%;">Entrar</button>
       </form>
@@ -115,8 +130,14 @@
         <p style="color:#6b7280; font-size:0.88rem; margin-bottom:16px;">
           Todavía no hay una clave configurada. Crea una — la podrás cambiar después desde la pestaña "Seguridad", y cualquier persona con la clave vigente también podrá cambiarla.
         </p>
-        <input type="password" id="input-clave-nueva-primera-vez" placeholder="Nueva clave (mínimo 4 caracteres)" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; margin-bottom:10px;">
-        <input type="password" id="input-clave-confirmar-primera-vez" placeholder="Confirma la clave" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%; margin-bottom:12px;">
+        <div class="campo-clave" style="margin-bottom:10px;">
+          <input type="password" id="input-clave-nueva-primera-vez" placeholder="Nueva clave (mínimo 4 caracteres)" autocomplete="new-password" style="min-height:44px; padding:0 44px 0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+          <button type="button" class="btn-mostrar-clave" data-objetivo="input-clave-nueva-primera-vez" aria-label="Mostrar clave" aria-pressed="false"></button>
+        </div>
+        <div class="campo-clave" style="margin-bottom:12px;">
+          <input type="password" id="input-clave-confirmar-primera-vez" placeholder="Confirma la clave" autocomplete="new-password" style="min-height:44px; padding:0 44px 0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+          <button type="button" class="btn-mostrar-clave" data-objetivo="input-clave-confirmar-primera-vez" aria-label="Mostrar clave" aria-pressed="false"></button>
+        </div>
         <div id="mensaje-error-primera-vez" class="mensaje-error"></div>
         <button type="submit" class="boton boton--primario" style="width:100%;">Crear clave y entrar</button>
       </form>
@@ -369,15 +390,24 @@
           </p>
           <div class="campo">
             <label style="display:block; font-weight:600; margin-bottom:6px;">Clave actual</label>
-            <input type="password" id="input-clave-actual-seguridad" autocomplete="current-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+            <div class="campo-clave">
+              <input type="password" id="input-clave-actual-seguridad" autocomplete="current-password" style="min-height:44px; padding:0 44px 0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+              <button type="button" class="btn-mostrar-clave" data-objetivo="input-clave-actual-seguridad" aria-label="Mostrar clave" aria-pressed="false"></button>
+            </div>
           </div>
           <div class="campo">
             <label style="display:block; font-weight:600; margin-bottom:6px;">Clave nueva</label>
-            <input type="password" id="input-clave-nueva-seguridad" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+            <div class="campo-clave">
+              <input type="password" id="input-clave-nueva-seguridad" autocomplete="new-password" style="min-height:44px; padding:0 44px 0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+              <button type="button" class="btn-mostrar-clave" data-objetivo="input-clave-nueva-seguridad" aria-label="Mostrar clave" aria-pressed="false"></button>
+            </div>
           </div>
           <div class="campo">
             <label style="display:block; font-weight:600; margin-bottom:6px;">Confirmar clave nueva</label>
-            <input type="password" id="input-clave-confirmar-seguridad" autocomplete="new-password" style="min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+            <div class="campo-clave">
+              <input type="password" id="input-clave-confirmar-seguridad" autocomplete="new-password" style="min-height:44px; padding:0 44px 0 12px; border-radius:8px; border:1px solid var(--color-linea); width:100%;">
+              <button type="button" class="btn-mostrar-clave" data-objetivo="input-clave-confirmar-seguridad" aria-label="Mostrar clave" aria-pressed="false"></button>
+            </div>
           </div>
           <div id="mensaje-error-seguridad" class="mensaje-error"></div>
           <div id="mensaje-ok-seguridad" class="mensaje-ok"></div>
@@ -1291,6 +1321,34 @@
        ========================================================================= */
 
     const CLAVE_SESION_LOCALSTORAGE = "telovendo_admin_sesion_ok";
+
+    /* --- Botón "ojito" (v13): mostrar/ocultar clave en los 6 campos ---------
+       Íconos SVG inline (sin dependencias externas) para el estado
+       "oculto" (ojo abierto, invita a mostrar) y "visible" (ojo tachado,
+       invita a ocultar de nuevo). */
+    const ICONO_OJO_MOSTRAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const ICONO_OJO_OCULTAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+    /** Pinta el ícono inicial (ojo abierto) en cada botón "ojito" al cargar la página. */
+    document.querySelectorAll(".btn-mostrar-clave").forEach((boton) => {
+      boton.innerHTML = ICONO_OJO_MOSTRAR;
+    });
+
+    /** Alterna un campo de clave entre oculto (type=password) y visible (type=text).
+     *  Recibe: el click en un botón .btn-mostrar-clave (usa data-objetivo = id del input asociado).
+     *  Retorna: nada — cambia el type del input y el ícono/estado del botón.
+     *  Invocada por: los 6 botones "ojito" del overlay de acceso y de la pestaña Seguridad. */
+    document.querySelectorAll(".btn-mostrar-clave").forEach((boton) => {
+      boton.addEventListener("click", () => {
+        const input = document.getElementById(boton.dataset.objetivo);
+        if (!input) return;
+        const iraAVisible = input.type === "password";
+        input.type = iraAVisible ? "text" : "password";
+        boton.innerHTML = iraAVisible ? ICONO_OJO_OCULTAR : ICONO_OJO_MOSTRAR;
+        boton.setAttribute("aria-label", iraAVisible ? "Ocultar clave" : "Mostrar clave");
+        boton.setAttribute("aria-pressed", iraAVisible ? "true" : "false");
+      });
+    });
 
     /** Punto de entrada: decide si mostrar el overlay o el panel directamente. */
     function inicializarAccesoAdmin_() {
