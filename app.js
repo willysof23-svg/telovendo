@@ -516,4 +516,36 @@ function formatearPrecio(valor) {
     .format(valor);
 }
 
-document.addEventListener("DOMContentLoaded", aplicarMarca);
+/**
+ * Botón flotante "Volver al panel" (v14) — solo para el administrador.
+ * Si el navegador ya tiene una sesión de admin recordada (ver
+ * panel-admin.html: CLAVE_SESION_LOCALSTORAGE = "telovendo_admin_sesion_ok"),
+ * y la página actual no es el panel mismo, se agrega un botón flotante que
+ * lleva de vuelta a panel-admin.html en un clic. Así, al usar "Ver sitio"
+ * desde el panel para navegar como lo vería un comprador, el admin no
+ * depende de la flecha "atrás" del navegador para retomar su trabajo.
+ * Un visitante normal (sin sesión de admin) nunca ve este botón.
+ * No recibe parámetros. No retorna nada. Se llama una vez, al cargar
+ * cada página pública (index, catalogo, producto, carrito, admin-archivos).
+ */
+function mostrarAccesoRapidoAdmin_() {
+  const esPanelAdmin = location.pathname.endsWith("panel-admin.html");
+  const haySesionAdmin = localStorage.getItem("telovendo_admin_sesion_ok") === "1";
+  if (esPanelAdmin || !haySesionAdmin) return;
+
+  const boton = document.createElement("a");
+  boton.href = "panel-admin.html";
+  boton.textContent = "⚙ Volver al panel";
+  boton.style.cssText = [
+    "position:fixed", "right:16px", "bottom:16px", "z-index:998",
+    "display:flex", "align-items:center", "min-height:44px", "padding:0 18px",
+    "background:var(--color-primario)", "color:#fff", "font-weight:600", "font-size:0.9rem",
+    "border-radius:999px", "text-decoration:none", "box-shadow:0 4px 14px rgba(20,25,43,0.18)",
+  ].join(";");
+  document.body.appendChild(boton);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  aplicarMarca();
+  mostrarAccesoRapidoAdmin_();
+});
